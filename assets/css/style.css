@@ -43,12 +43,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 80px;
+    width: 120px;
     flex-shrink: 0;
 }
 
 .logo {
-    height: 60px;
+    height: 100px;
     width: auto;
 }
 
