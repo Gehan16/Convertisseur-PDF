@@ -432,3 +432,17 @@ body {
         height: 100px;
     }
 }
+
+/* Logo */
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 1rem;
+}
+
+.logo {
+    height: 60px; /* Ajustez la taille selon vos besoins */
+    width: auto;
+    margin-right: 1rem;
+}
