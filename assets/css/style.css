@@ -43,7 +43,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 120px;
+    width: 320px;
     flex-shrink: 0;
 }
 
