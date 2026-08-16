@@ -43,12 +43,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 120px;
+    width: 220px;
     flex-shrink: 0;
 }
 
 .logo {
-    height: 100px !important; /* Taille forcée */
+    height: 200px !important; /* Taille forcée */
     width: auto !important;
     max-width: 100%;
     object-fit: contain;
