@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertisseur PDF sécurisé</title>
+    <!-- Chargement des polices modernes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chargement de jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Chargement de pdf.js pour lire les PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2C3E50;
+            --secondary-color: #3498DB;
+            --accent-color: #2ECC71;
+            --warning-color: #F39C12;
+            --error-color: #E74C3C;
+            --text-color: #333;
+            --light-text: #7F8C8D;
+            --background: #F8F9FA;
+            --card-background: #FFFFFF;
+            --border-color: #E0E0E0;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            --shadow-hover: 0 6px 12px rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            background: var(--background);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        /* Conteneur principal avec sidebar */
+        .main-container {
+            display: flex;
+            gap: 1.5rem;
+        }
+        
+        /* Contenu principal */
+        .content {
+            flex: 1;
+            min-width: 600px;
+        }
+        
+        /* En-tête */
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            color: var(--light-text);
+            font-size: 0.95rem;
+        }
+        
+        /* Sidebar pour les encarts */
+        .sidebar {
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: sticky;
+            top: 2rem;
+            align-self: flex-start;
+            height: fit-content;
+            margin-top: calc((100vh - 2rem - 2 * (1.5rem + 1.5rem + 150px + 2.5rem + 1.5rem)) / 2);
+        }
+        
+        /* Carte générique pour les encarts */
+        .card {
+            background: var(--card-background);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        
+        /* Carte "Pourquoi ce convertisseur est différent" */
+        .why-different-card {
+            text-align: center;
+        }
+        
+        .why-different-card h3 {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        
+        .why-different-card p {
+            color: var(--light-text);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        /* Carte de soutien */
+        .support-card {
+            text-align: center;
+        }
+        
+        .support-card h3 {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        
+        .support-card p {
+            color: var(--light-text);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .ko-fi-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: #2D9CDB;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+        }
+        
+        .ko-fi-btn:hover {
+            background: #1E88B8;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .ko-fi-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        /* Section générale */
+        .section {
+            background: var(--card-background);
+            border-radius: var(--radius);
+            padding: 1.8rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.2rem;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 1.2rem;
+            background: var(--secondary-color);
+            border-radius: 2px;
+        }
+        
+        /* Zone de dépôt moderne */
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius);
+            padding: 2.5rem;
+            text-align: center;
+            background: var(--card-background);
+            transition: var(--transition);
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            color: var(--light-text);
+        }
+        
+        .drop-zone:hover {
+            border-color: var(--secondary-color);
+            background: #F0F4FF;
+        }
+        
+        .drop-zone.dragover {
+            border-color: var(--secondary-color);
+            background: #E6F0FF;
+            color: var(--secondary-color);
+        }
+        
+        .drop-zone p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        
+        .drop-zone i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--secondary-color);
+        }
+        
+        /* Grille des fichiers */
+        .file-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .file-wrapper {
+            position: relative;
+            width: 100px;
+            height: 120px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--card-background);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+        
+        .file-wrapper:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+        
+        .file-wrapper img {
+            width: 80%;
+            height: 60%;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .file-name {
+            font-size: 0.7rem;
+            color: var(--light-text);
+            text-align: center;
+            padding: 0 0.25rem;
+            word-break: break-word;
+            width: 100%;
+        }
+        
+        .remove-btn {
+            position: absolute;
+            top: 0.25rem;
+            right: 0.25rem;
+            width: 20px;
+            height: 20px;
+            background: var(--error-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.75rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+            transition: var(--transition);
+        }
+        
+        .remove-btn:hover {
+            opacity: 1;
+            background: #C0392B;
+        }
+        
+        /* Icônes modernes */
+        .pdf-icon, .image-icon {
+            width: 40px;
+            height: 50px;
+            margin: 0 auto 0.5rem;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        .pdf-icon {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23E74C3C'%3E%3Cpath d='M15.5,3.5L14,2L4,2C2.9,2,2,2.9,2,4V20C2,21.1,2.9,22,4,22H14C14.5,22,15,21.7,15.4,21.3L16.5,20V4C16.5,3.8,16.3,3.5,15.5,3.5M14,20H4V4H14V5H5V19H14V20M18,6H13V11H18V6M18,12H13V17H18V12M18,18H13V20H18V18Z'/%3E%3C/svg%3E");
+        }
+        
+        .image-icon {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233498DB'%3E%3Cpath d='M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19M8.5,13.5L11,16.5L14.5,12L19,17.5V5H5V17.5L8.5,13.5Z'/%3E%3C/svg%3E");
+        }
+        
+        /* Champ de texte moderne */
+        #textInput {
+            width: 100%;
+            min-height: 150px;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+            transition: var(--transition);
+        }
+        
+        #textInput:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        #textInput::placeholder {
+            color: #BDC3C7;
+        }
+        
+        /* Boutons modernes */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.85rem 1.5rem;
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn:disabled {
+            background: #BDC3C7;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #1A252F;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .btn-success {
+            background: var(--accent-color);
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background: #27AE60;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+        
+        .btn-warning:hover:not(:disabled) {
+            background: #E67E22;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        /* Messages d'erreur */
+        .error-message {
+            text-align: center;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: var(--radius);
+            color: var(--error-color);
+            background: #FFEBEE;
+            border: 1px solid #FFC7CE;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .content {
+                max-width: 100%;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-width: 350px;
+                position: static;
+                align-self: center;
+                margin-top: 0;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 1.5rem 1rem;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .section {
+                padding: 1.2rem;
+            }
+            
+            .file-wrapper {
+                width: 80px;
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Contenu principal -->
+        <main class="content">
+            <div class="header">
+                <h1>Convertisseur PDF sécurisé</h1>
+                <p>Convertissez du texte, des images et fusionnez des PDF en local, sans aucun upload de donnée.</p>
+            </div>
+
+            <!-- Section pour convertir du texte en PDF -->
+            <div class="section">
+                <h2 class="section-title">Convertir du Texte en PDF</h2>
+                <textarea id="textInput" placeholder="Saisissez votre texte ici..." oninput="updateTextButtonState()"></textarea>
+                <button id="textConvertBtn" class="btn btn-primary" disabled onclick="convertTextToPDF()">Télécharger le PDF</button>
+            </div>
+
+            <!-- Section pour convertir des images en PDF -->
+            <div class="section">
+                <h2 class="section-title">Convertir des Images en PDF</h2>
+                <!-- Zone de Glisser-Déposer -->
+                <div id="image-drop-zone" class="drop-zone">
+                    <i>📷</i>
+                    <p>Glissez vos images ici ou cliquez pour sélectionner</p>
+                    <input type="file" id="imageFileInput" accept="image/*" multiple style="display: none;">
+                </div>
+
+                <!-- Conteneur des miniatures -->
+                <div id="image-thumbnail-container" class="file-container"></div>
+
+                <button id="imagesConvertBtn" class="btn btn-success" disabled>Télécharger le PDF</button>
+            </div>
+
+            <!-- Section pour fusionner des PDF -->
+            <div class="section">
+                <h2 class="section-title">Fusionner des PDF</h2>
+                <!-- Zone de Glisser-Déposer pour les PDF -->
+                <div id="pdf-drop-zone" class="drop-zone">
+                    <i>📄</i>
+                    <p>Glissez vos PDF ici ou cliquez pour sélectionner</p>
+                    <input type="file" id="pdfFileInput" accept=".pdf" multiple style="display: none;">
+                </div>
+
+                <!-- Conteneur des fichiers PDF -->
+                <div id="pdf-file-container" class="file-container"></div>
+                
+                <!-- Message d'erreur -->
+                <div id="pdfErrorMessage" class="error-message"></div>
+
+                <button id="mergePdfBtn" class="btn btn-warning" disabled onclick="mergePDFs()">Fusionner les PDF</button>
+            </div>
+        </main>
+        
+        <!-- Sidebar pour les encarts -->
+        <aside class="sidebar">
+            <div class="card why-different-card">
+                <h3>Pourquoi ce convertisseur est différent</h3>
+                <p>Contrairement aux autres convertisseurs trouvables sur internet, ce convertisseur garantit la confidentialité de vos données. En effet, vos données et vos documents restent sur votre navigateur et tout le traitement est réalisé en local. Aucune donnée ne part vers l'extérieur.</p>
+            </div>
+            
+            <div class="card support-card">
+                <h3>Soutenir cet outil</h3>
+                <p>Si cet outil vous est utile, vous pouvez me soutenir via Ko-fi pour m'aider à continuer à développer des projets gratuits et open source.</p>
+                <a href="https://ko-fi.com/antoinesadik" class="ko-fi-btn" target="_blank" rel="noopener noreferrer">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    Soutenir sur Ko-fi
+                </a>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // Initialisation de jsPDF
+        const { jsPDF } = window.jspdf;
+
+        // Initialisation de pdf.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.worker.min.js';
+
+        // Éléments pour le texte
+        const textInput = document.getElementById('textInput');
+        const textConvertBtn = document.getElementById('textConvertBtn');
+
+        // Éléments pour les images
+        const imageDropZone = document.getElementById('image-drop-zone');
+        const imageFileInput = document.getElementById('imageFileInput');
+        const imageThumbContainer = document.getElementById('image-thumbnail-container');
+        const imagesConvertBtn = document.getElementById('imagesConvertBtn');
+
+        // Éléments pour les PDF
+        const pdfDropZone = document.getElementById('pdf-drop-zone');
+        const pdfFileInput = document.getElementById('pdfFileInput');
+        const pdfFileContainer = document.getElementById('pdf-file-container');
+        const mergePdfBtn = document.getElementById('mergePdfBtn');
+        const pdfErrorMessage = document.getElementById('pdfErrorMessage');
+
+        // Tableaux pour stocker les données
+        let imagesData = [];
+        let pdfFiles = [];
+
+        // --- Fonctions communes pour le Glisser-Déposer ---
+        function setupDropZone(dropZone, fileInput, handleFilesCallback, isImageZone = false) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+            dropZone.addEventListener('drop', (e) => {
+                dropZone.classList.remove('dragover');
+                handleFilesCallback({ target: { files: e.dataTransfer.files } });
+            });
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFilesCallback);
+        }
+
+        function preventDefaults(e) { 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+        }
+
+        // --- Gestion des Images ---
+        function handleImageFiles(e) {
+            const files = [...e.target.files];
+            files.forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        imagesData.push(img);
+                        createImageThumbnail(img, imagesData.length - 1);
+                        updateImagesButtonState();
+                    };
+                };
+                reader.readAsDataURL(file);
+            });
+            imageFileInput.value = '';
+        }
+
+        function createImageThumbnail(imgObj, index) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'file-wrapper';
+            
+            const img = document.createElement('img');
+            img.src = imgObj.src;
+            
+            const btn = document.createElement('button');
+            btn.className = 'remove-btn';
+            btn.innerHTML = '&times;';
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                removeImage(index, wrapper);
+            };
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(btn);
+            imageThumbContainer.appendChild(wrapper);
+        }
+
+        function removeImage(index, element) {
+            imagesData.splice(index, 1);
+            element.remove();
+            imageThumbContainer.innerHTML = '';
+            imagesData.forEach((img, i) => createImageThumbnail(img, i));
+            updateImagesButtonState();
+        }
+
+        function updateImagesButtonState() {
+            imagesConvertBtn.disabled = imagesData.length === 0;
+            imagesConvertBtn.textContent = imagesData.length > 0 
+                ? `Télécharger le PDF (${imagesData.length} image${imagesData.length > 1 ? 's' : ''})` 
+                : 'Télécharger le PDF';
+        }
+
+        // --- Conversion des images en PDF ---
+        imagesConvertBtn.addEventListener('click', function() {
+            if (imagesData.length === 0) return;
+
+            const firstImg = imagesData[0];
+            const doc = new jsPDF({
+                orientation: firstImg.width > firstImg.height ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [firstImg.width, firstImg.height]
+            });
+
+            doc.addImage(firstImg, 'JPEG', 0, 0, firstImg.width, firstImg.height);
+
+            for (let i = 1; i < imagesData.length; i++) {
+                const img = imagesData[i];
+                doc.addPage([img.width, img.height], img.width > img.height ? 'landscape' : 'portrait');
+                doc.addImage(img, 'JPEG', 0, 0, img.width, img.height);
+            }
+
+            doc.save('album-photos.pdf');
+        });
+
+        // --- Gestion des PDF ---
+        function handlePDFFiles(e) {
+            const files = [...e.target.files];
+            files.forEach(file => {
+                if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) return;
+                pdfFiles.push(file);
+                createPDFThumbnail(file, pdfFiles.length - 1);
+                updateMergePdfButtonState();
+            });
+            pdfFileInput.value = '';
+        }
+
+        function createPDFThumbnail(file, index) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'file-wrapper';
+            
+            const icon = document.createElement('div');
+            icon.className = 'pdf-icon';
+            
+            const name = document.createElement('div');
+            name.className = 'file-name';
+            name.textContent = file.name.length > 12 ? file.name.substring(0, 10) + '...' : file.name;
+            
+            const btn = document.createElement('button');
+            btn.className = 'remove-btn';
+            btn.innerHTML = '&times;';
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                removePDF(index, wrapper);
+            };
+
+            wrapper.appendChild(icon);
+            wrapper.appendChild(name);
+            wrapper.appendChild(btn);
+            pdfFileContainer.appendChild(wrapper);
+        }
+
+        function removePDF(index, element) {
+            pdfFiles.splice(index, 1);
+            element.remove();
+            pdfFileContainer.innerHTML = '';
+            pdfFiles.forEach((file, i) => createPDFThumbnail(file, i));
+            updateMergePdfButtonState();
+        }
+
+        function updateMergePdfButtonState() {
+            mergePdfBtn.disabled = pdfFiles.length < 2;
+            mergePdfBtn.textContent = pdfFiles.length >= 2 
+                ? `Fusionner ${pdfFiles.length} PDF` 
+                : 'Fusionner les PDF';
+        }
+
+        // --- Fusion des PDF avec pdf.js et jsPDF ---
+        async function mergePDFs() {
+            if (pdfFiles.length < 2) return;
+
+            mergePdfBtn.disabled = true;
+            mergePdfBtn.textContent = 'Fusion en cours...';
+            pdfErrorMessage.classList.remove('show');
+
+            try {
+                const mergedPdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'pt',
+                    format: 'a4'
+                });
+
+                let isFirstPage = true;
+
+                for (const file of pdfFiles) {
+                    const pdfData = await readPDFAsDataURL(file);
+                    const pdf = await pdfjsLib.getDocument(pdfData).promise;
+                    
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const scale = 2.0;
+                        const viewport = page.getViewport({ scale: scale });
+                        
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        
+                        await page.render({
+                            canvasContext: context,
+                            viewport: viewport
+                        }).promise;
+                        
+                        const imgData = canvas.toDataURL('image/png');
+                        
+                        if (!isFirstPage) {
+                            mergedPdf.addPage('a4', 'portrait');
+                        } else {
+                            isFirstPage = false;
+                        }
+                        
+                        const pageWidth = mergedPdf.internal.pageSize.getWidth();
+                        const pageHeight = mergedPdf.internal.pageSize.getHeight();
+                        mergedPdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+                    }
+                }
+
+                mergedPdf.save('pdf-fusionne.pdf');
+            } catch (error) {
+                console.error('Erreur lors de la fusion des PDF :', error);
+                pdfErrorMessage.textContent = 'Erreur lors de la fusion : ' + error.message;
+                pdfErrorMessage.classList.add('show');
+            } finally {
+                mergePdfBtn.disabled = false;
+                updateMergePdfButtonState();
+            }
+        }
+
+        // Fonction pour lire un PDF comme DataURL
+        function readPDFAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- Conversion du texte en PDF ---
+        function updateTextButtonState() {
+            textConvertBtn.disabled = textInput.value.trim() === '';
+        }
+
+        function convertTextToPDF() {
+            const text = textInput.value.trim();
+            if (!text) return;
+
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const lines = doc.splitTextToSize(text, 180);
+            doc.text(lines, 10, 10, { align: 'left' });
+            doc.save('texte-converti.pdf');
+        }
+
+        // Initialisation des zones de dépôt
+        setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
+        setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
+    </script>
+</body>
+</html>
