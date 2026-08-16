@@ -45,7 +45,6 @@ body {
     justify-content: center;
     width: 80px;
     flex-shrink: 0;
-    margin-top: 2rem;
 }
 
 .logo {
@@ -84,7 +83,6 @@ body {
     flex-direction: column;
     gap: 1rem;
     flex-shrink: 0;
-    margin-top: 2rem;
 }
 
 /* Carte générique pour les encarts */
@@ -408,32 +406,29 @@ body {
     display: block;
 }
 
-/* Responsive */
+/* Responsive : Alignement du logo et des encarts */
 @media (max-width: 1024px) {
     .main-container {
         flex-wrap: wrap;
-        justify-content: center;
     }
 
     .logo-container {
         width: 100%;
-        order: -1;
         justify-content: center;
-        margin-top: 0;
-        margin-bottom: 1rem;
+        order: 1;
     }
 
     .content {
-        max-width: 100%;
-        order: 1;
+        width: 100%;
+        order: 2;
     }
 
     .sidebar {
         width: 100%;
         max-width: 350px;
-        order: 2;
-        margin-top: 0;
+        order: 3;
         align-self: center;
+        margin: 0 auto;
     }
 }
 
