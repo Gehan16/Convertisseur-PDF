@@ -1,31 +1,30 @@
 // Initialisation de jsPDF
 const { jsPDF } = window.jspdf;
 
-// Initialisation de pdf.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+// Données
+let imagesData = [];
+let pdfFiles = [];
 
-// Éléments pour le texte
+// Éléments DOM
 const textInput = document.getElementById('textInput');
 const textConvertBtn = document.getElementById('textConvertBtn');
-
-// Éléments pour les images
 const imageDropZone = document.getElementById('image-drop-zone');
 const imageFileInput = document.getElementById('imageFileInput');
 const imageThumbContainer = document.getElementById('image-thumbnail-container');
 const imagesConvertBtn = document.getElementById('imagesConvertBtn');
-
-// Éléments pour les PDF
 const pdfDropZone = document.getElementById('pdf-drop-zone');
 const pdfFileInput = document.getElementById('pdfFileInput');
 const pdfFileContainer = document.getElementById('pdf-file-container');
 const mergePdfBtn = document.getElementById('mergePdfBtn');
 const pdfErrorMessage = document.getElementById('pdfErrorMessage');
 
-// Tableaux pour stocker les données
-let imagesData = [];
-let pdfFiles = [];
+// Initialisation après chargement du DOM
+document.addEventListener('DOMContentLoaded', () => {
+    setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
+    setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
+});
 
-// --- Fonctions communes pour le Glisser-Déposer ---
+// --- Fonctions communes ---
 function setupDropZone(dropZone, fileInput, handleFilesCallback) {
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, preventDefaults, false);
@@ -103,8 +102,8 @@ function updateImagesButtonState() {
         : 'Télécharger le PDF';
 }
 
-// --- Conversion des images en PDF ---
-imagesConvertBtn.addEventListener('click', function() {
+// --- Conversion Images → PDF ---
+imagesConvertBtn.addEventListener('click', () => {
     if (imagesData.length === 0) return;
 
     const firstImg = imagesData[0];
@@ -177,7 +176,7 @@ function updateMergePdfButtonState() {
         : 'Fusionner les PDF';
 }
 
-// --- Fusion des PDF avec pdf.js et jsPDF ---
+// --- Fusion de PDF ---
 async function mergePDFs() {
     if (pdfFiles.length < 2) return;
 
@@ -186,48 +185,30 @@ async function mergePDFs() {
     pdfErrorMessage.classList.remove('show');
 
     try {
-        const mergedPdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'pt',
-            format: 'a4'
-        });
-
-        let isFirstPage = true;
-
-        for (const file of pdfFiles) {
-            const pdfData = await readPDFAsDataURL(file);
-            const pdf = await pdfjsLib.getDocument(pdfData).promise;
-
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const scale = 2.0;
-                const viewport = page.getViewport({ scale: scale });
-
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                await page.render({
-                    canvasContext: context,
-                    viewport: viewport
-                }).promise;
-
-                const imgData = canvas.toDataURL('image/png');
-
-                if (!isFirstPage) {
-                    mergedPdf.addPage('a4', 'portrait');
-                } else {
-                    isFirstPage = false;
-                }
-
-                const pageWidth = mergedPdf.internal.pageSize.getWidth();
-                const pageHeight = mergedPdf.internal.pageSize.getHeight();
-                mergedPdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
-            }
+        // Attendre que pdfLib soit disponible (max 5 secondes)
+        const startTime = Date.now();
+        while (typeof pdfLib === 'undefined' && Date.now() - startTime < 5000) {
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        mergedPdf.save('pdf-fusionne.pdf');
+        if (typeof pdfLib === 'undefined') {
+            throw new Error("pdf-lib n'a pas pu se charger. Veuillez rafraîchir la page.");
+        }
+
+        // Fusionner les PDF
+        const firstPdfBytes = await readFileAsArrayBuffer(pdfFiles[0]);
+        let mergedPdf = await pdfLib.PDFDocument.load(firstPdfBytes);
+
+        for (let i = 1; i < pdfFiles.length; i++) {
+            const pdfBytes = await readFileAsArrayBuffer(pdfFiles[i]);
+            const pdfDoc = await pdfLib.PDFDocument.load(pdfBytes);
+            const pages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+            pages.forEach(page => mergedPdf.addPage(page));
+        }
+
+        const mergedPdfBytes = await mergedPdf.save();
+        downloadPdf(mergedPdfBytes, 'pdf-fusionne.pdf');
+
     } catch (error) {
         console.error('Erreur lors de la fusion des PDF :', error);
         pdfErrorMessage.textContent = 'Erreur lors de la fusion : ' + error.message;
@@ -238,17 +219,27 @@ async function mergePDFs() {
     }
 }
 
-// Fonction pour lire un PDF comme DataURL
-function readPDFAsDataURL(file) {
+// --- Fonctions utilitaires ---
+function readFileAsArrayBuffer(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = reject;
-        reader.readAsDataURL(file);
+        reader.readAsArrayBuffer(file);
     });
 }
 
-// --- Conversion du texte en PDF ---
+function downloadPdf(bytes, filename) {
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// --- Conversion Texte → PDF ---
 function updateTextButtonState() {
     textConvertBtn.disabled = textInput.value.trim() === '';
 }
@@ -267,7 +258,3 @@ function convertTextToPDF() {
     doc.text(lines, 10, 10, { align: 'left' });
     doc.save('texte-converti.pdf');
 }
-
-// Initialisation des zones de dépôt
-setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
-setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
