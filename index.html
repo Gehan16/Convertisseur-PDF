@@ -4,23 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Convertisseur PDF sécurisé</title>
-    <!-- Chargement des polices modernes -->
+    <!-- Polices Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chargement de jsPDF -->
+    <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Chargement de pdf.js pour lire les PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <!-- Lien vers le CSS externe -->
+    <!-- pdf.js pour la fusion -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
+    <!-- CSS local -->
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
     <div class="main-container">
-        <!-- Logo à gauche, centré verticalement -->
-        <div class="logo-container">
-            <img src="assets/images/logo.png" alt="Logo Convertisseur PDF" class="logo">
-        </div>
         <!-- Contenu principal -->
         <main class="content">
             <div class="header">
@@ -28,68 +24,138 @@
                 <p>Convertissez du texte, des images et fusionnez des PDF en local, sans aucun upload de donnée.</p>
             </div>
 
-            <!-- Section pour convertir du texte en PDF -->
+            <!-- Texte → PDF -->
             <div class="section">
                 <h2 class="section-title">Convertir du Texte en PDF</h2>
                 <textarea id="textInput" placeholder="Saisissez votre texte ici..." oninput="updateTextButtonState()"></textarea>
-                <button id="textConvertBtn" class="btn btn-primary" disabled onclick="convertTextToPDF()">Télécharger le PDF</button>
+
+                <!-- Contrôles de marges pour le texte (masqués par défaut) -->
+                <div class="margin-controls" id="textMargins" style="display: none;">
+                    <h3>Marges (mm)</h3>
+                    <div class="margin-inputs">
+                        <div class="margin-input">
+                            <label for="textMarginTop">Haut :</label>
+                            <input type="number" id="textMarginTop" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="textMarginBottom">Bas :</label>
+                            <input type="number" id="textMarginBottom" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="textMarginLeft">Gauche :</label>
+                            <input type="number" id="textMarginLeft" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="textMarginRight">Droite :</label>
+                            <input type="number" id="textMarginRight" value="20" min="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button id="textSettingsBtn" class="btn btn-secondary" onclick="toggleTextMargins()">⚙️ Paramètres</button>
+                    <button id="textDownloadBtn" class="btn btn-primary" disabled onclick="convertTextToPDF()">Télécharger le PDF</button>
+                </div>
             </div>
 
-            <!-- Section pour convertir des images en PDF -->
+            <!-- Images → PDF -->
             <div class="section">
                 <h2 class="section-title">Convertir des Images en PDF</h2>
-                <!-- Zone de Glisser-Déposer -->
                 <div id="image-drop-zone" class="drop-zone">
                     <i>📷</i>
                     <p>Glissez vos images ici ou cliquez pour sélectionner</p>
                     <input type="file" id="imageFileInput" accept="image/*" multiple style="display: none;">
                 </div>
 
-                <!-- Conteneur des miniatures -->
+                <!-- Contrôles de marges pour les images (masqués par défaut) -->
+                <div class="margin-controls" id="imageMargins" style="display: none;">
+                    <h3>Marges (mm)</h3>
+                    <div class="margin-inputs">
+                        <div class="margin-input">
+                            <label for="imageMarginTop">Haut :</label>
+                            <input type="number" id="imageMarginTop" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="imageMarginBottom">Bas :</label>
+                            <input type="number" id="imageMarginBottom" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="imageMarginLeft">Gauche :</label>
+                            <input type="number" id="imageMarginLeft" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="imageMarginRight">Droite :</label>
+                            <input type="number" id="imageMarginRight" value="20" min="0">
+                        </div>
+                    </div>
+                </div>
                 <div id="image-thumbnail-container" class="file-container"></div>
-
-                <button id="imagesConvertBtn" class="btn btn-success" disabled>Télécharger le PDF</button>
+                <div class="button-group">
+                    <button id="imageSettingsBtn" class="btn btn-secondary" onclick="toggleImageMargins()">⚙️ Paramètres</button>
+                    <button id="imagesConvertBtn" class="btn btn-success" disabled>Télécharger le PDF</button>
+                </div>
             </div>
 
-            <!-- Section pour fusionner des PDF -->
+            <!-- Fusion de PDF -->
             <div class="section">
                 <h2 class="section-title">Fusionner des PDF</h2>
-                <!-- Zone de Glisser-Déposer pour les PDF -->
                 <div id="pdf-drop-zone" class="drop-zone">
                     <i>📄</i>
                     <p>Glissez vos PDF ici ou cliquez pour sélectionner</p>
                     <input type="file" id="pdfFileInput" accept=".pdf" multiple style="display: none;">
                 </div>
 
-                <!-- Conteneur des fichiers PDF -->
+                <!-- Contrôles de marges pour la fusion (masqués par défaut) -->
+                <div class="margin-controls" id="pdfMargins" style="display: none;">
+                    <h3>Marges (mm)</h3>
+                    <p class="margin-note">Les marges seront appliquées à chaque page du PDF fusionné.</p>
+                    <div class="margin-inputs">
+                        <div class="margin-input">
+                            <label for="pdfMarginTop">Haut :</label>
+                            <input type="number" id="pdfMarginTop" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="pdfMarginBottom">Bas :</label>
+                            <input type="number" id="pdfMarginBottom" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="pdfMarginLeft">Gauche :</label>
+                            <input type="number" id="pdfMarginLeft" value="20" min="0">
+                        </div>
+                        <div class="margin-input">
+                            <label for="pdfMarginRight">Droite :</label>
+                            <input type="number" id="pdfMarginRight" value="20" min="0">
+                        </div>
+                    </div>
+                </div>
                 <div id="pdf-file-container" class="file-container"></div>
-
-                <!-- Message d'erreur -->
                 <div id="pdfErrorMessage" class="error-message"></div>
-
-                <button id="mergePdfBtn" class="btn btn-warning" disabled onclick="mergePDFs()">Fusionner les PDF</button>
+                <div class="button-group">
+                    <button id="pdfSettingsBtn" class="btn btn-secondary" onclick="togglePdfMargins()">⚙️ Paramètres</button>
+                    <button id="mergePdfBtn" class="btn btn-warning" disabled onclick="mergePDFs()">Fusionner les PDF</button>
+                </div>
             </div>
         </main>
 
-        <!-- Sidebar pour les encarts -->
+        <!-- Sidebar à droite -->
         <aside class="sidebar">
+            <div class="logo-container">
+                <img src="assets/images/logo.png" alt="Logo Convertisseur PDF" class="logo">
+            </div>
             <div class="card why-different-card">
                 <h3>Pourquoi ce convertisseur est différent</h3>
                 <p>Contrairement aux autres convertisseurs trouvables sur internet, ce convertisseur garantit la confidentialité de vos données. En effet, vos données et vos documents restent sur votre navigateur et tout le traitement est réalisé en local. Aucune donnée ne part vers l'extérieur.</p>
             </div>
 
-            <div class="card support-card">
-                <h3>Soutenir cet outil</h3>
-                <p>Si cet outil vous est utile, vous pouvez me soutenir via Ko-fi pour m'aider à continuer à développer des projets gratuits et open source.</p>
-                <a href="https://ko-fi.com/" class="ko-fi-btn" target="_blank" rel="noopener noreferrer">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-                    Soutenir sur Ko-fi
-                </a>
-            </div>
-        </aside>
+<div class="card support-card">
+    <h3>Soutenir cet outil</h3>
+    <p>Si cet outil vous est utile, vous pouvez me soutenir via Ko-fi pour m'aider à continuer à développer des projets gratuits et open source.</p>
+    <div class="ko-fi-container">
+        <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
+        <script type='text/javascript'>kofiwidget2.init('Soutenir sur Ko-fi', '#72a4f2', 'P7D025DUH0');kofiwidget2.draw();</script>
     </div>
+</div>
 
-    <!-- Lien vers le script JS externe -->
+    <!-- Scripts -->
     <script src="assets/js/script.js"></script>
 </body>
 </html>
