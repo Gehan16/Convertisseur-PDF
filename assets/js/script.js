@@ -1,31 +1,56 @@
 // Initialisation de jsPDF
 const { jsPDF } = window.jspdf;
 
-// Initialisation de pdf.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+// Variables globales pour pdf.js
+let pdfjsLib = window['pdfjs-dist/build/pdf'];
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.worker.min.js';
 
-// Éléments pour le texte
+// Données
+let imagesData = [];
+let pdfFiles = [];
+
+// Éléments DOM
 const textInput = document.getElementById('textInput');
-const textConvertBtn = document.getElementById('textConvertBtn');
-
-// Éléments pour les images
+const textDownloadBtn = document.getElementById('textDownloadBtn');
+const textSettingsBtn = document.getElementById('textSettingsBtn');
 const imageDropZone = document.getElementById('image-drop-zone');
 const imageFileInput = document.getElementById('imageFileInput');
 const imageThumbContainer = document.getElementById('image-thumbnail-container');
 const imagesConvertBtn = document.getElementById('imagesConvertBtn');
-
-// Éléments pour les PDF
+const imageSettingsBtn = document.getElementById('imageSettingsBtn');
 const pdfDropZone = document.getElementById('pdf-drop-zone');
 const pdfFileInput = document.getElementById('pdfFileInput');
 const pdfFileContainer = document.getElementById('pdf-file-container');
 const mergePdfBtn = document.getElementById('mergePdfBtn');
+const pdfSettingsBtn = document.getElementById('pdfSettingsBtn');
 const pdfErrorMessage = document.getElementById('pdfErrorMessage');
 
-// Tableaux pour stocker les données
-let imagesData = [];
-let pdfFiles = [];
+// Éléments pour les marges
+const textMargins = document.getElementById('textMargins');
+const textMarginTop = document.getElementById('textMarginTop');
+const textMarginBottom = document.getElementById('textMarginBottom');
+const textMarginLeft = document.getElementById('textMarginLeft');
+const textMarginRight = document.getElementById('textMarginRight');
 
-// --- Fonctions communes pour le Glisser-Déposer ---
+const imageMargins = document.getElementById('imageMargins');
+const imageMarginTop = document.getElementById('imageMarginTop');
+const imageMarginBottom = document.getElementById('imageMarginBottom');
+const imageMarginLeft = document.getElementById('imageMarginLeft');
+const imageMarginRight = document.getElementById('imageMarginRight');
+
+const pdfMargins = document.getElementById('pdfMargins');
+const pdfMarginTop = document.getElementById('pdfMarginTop');
+const pdfMarginBottom = document.getElementById('pdfMarginBottom');
+const pdfMarginLeft = document.getElementById('pdfMarginLeft');
+const pdfMarginRight = document.getElementById('pdfMarginRight');
+
+// Initialisation après chargement du DOM
+document.addEventListener('DOMContentLoaded', () => {
+    setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
+    setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
+});
+
+// --- Fonctions communes ---
 function setupDropZone(dropZone, fileInput, handleFilesCallback) {
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, preventDefaults, false);
@@ -45,6 +70,37 @@ function setupDropZone(dropZone, fileInput, handleFilesCallback) {
 function preventDefaults(e) {
     e.preventDefault();
     e.stopPropagation();
+}
+
+// --- Toggle pour les marges ---
+function toggleTextMargins() {
+    if (textMargins.style.display === 'none') {
+        textMargins.style.display = 'block';
+        textSettingsBtn.textContent = '✅ Valider';
+    } else {
+        textMargins.style.display = 'none';
+        textSettingsBtn.textContent = '⚙️ Paramètres';
+    }
+}
+
+function toggleImageMargins() {
+    if (imageMargins.style.display === 'none') {
+        imageMargins.style.display = 'block';
+        imageSettingsBtn.textContent = '✅ Valider';
+    } else {
+        imageMargins.style.display = 'none';
+        imageSettingsBtn.textContent = '⚙️ Paramètres';
+    }
+}
+
+function togglePdfMargins() {
+    if (pdfMargins.style.display === 'none') {
+        pdfMargins.style.display = 'block';
+        pdfSettingsBtn.textContent = '✅ Valider';
+    } else {
+        pdfMargins.style.display = 'none';
+        pdfSettingsBtn.textContent = '⚙️ Paramètres';
+    }
 }
 
 // --- Gestion des Images ---
@@ -98,28 +154,35 @@ function removeImage(index, element) {
 
 function updateImagesButtonState() {
     imagesConvertBtn.disabled = imagesData.length === 0;
-    imagesConvertBtn.textContent = imagesData.length > 0
-        ? `Télécharger le PDF (${imagesData.length} image${imagesData.length > 1 ? 's' : ''})`
-        : 'Télécharger le PDF';
 }
 
-// --- Conversion des images en PDF ---
+// --- Conversion Images → PDF (avec marges) ---
 imagesConvertBtn.addEventListener('click', function() {
     if (imagesData.length === 0) return;
+
+    const marginTop = parseFloat(imageMarginTop.value) || 20;
+    const marginBottom = parseFloat(imageMarginBottom.value) || 20;
+    const marginLeft = parseFloat(imageMarginLeft.value) || 20;
+    const marginRight = parseFloat(imageMarginRight.value) || 20;
 
     const firstImg = imagesData[0];
     const doc = new jsPDF({
         orientation: firstImg.width > firstImg.height ? 'landscape' : 'portrait',
-        unit: 'px',
-        format: [firstImg.width, firstImg.height]
+        unit: 'mm'
     });
 
-    doc.addImage(firstImg, 'JPEG', 0, 0, firstImg.width, firstImg.height);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const imgWidth = pageWidth - marginLeft - marginRight;
+    const imgHeight = pageHeight - marginTop - marginBottom;
+
+    doc.addImage(firstImg, 'JPEG', marginLeft, marginTop, imgWidth, imgHeight);
 
     for (let i = 1; i < imagesData.length; i++) {
         const img = imagesData[i];
-        doc.addPage([img.width, img.height], img.width > img.height ? 'landscape' : 'portrait');
-        doc.addImage(img, 'JPEG', 0, 0, img.width, img.height);
+        const orientation = img.width > img.height ? 'landscape' : 'portrait';
+        doc.addPage([pageWidth, pageHeight], orientation);
+        doc.addImage(img, 'JPEG', marginLeft, marginTop, imgWidth, imgHeight);
     }
 
     doc.save('album-photos.pdf');
@@ -172,12 +235,9 @@ function removePDF(index, element) {
 
 function updateMergePdfButtonState() {
     mergePdfBtn.disabled = pdfFiles.length < 2;
-    mergePdfBtn.textContent = pdfFiles.length >= 2
-        ? `Fusionner ${pdfFiles.length} PDF`
-        : 'Fusionner les PDF';
 }
 
-// --- Fusion des PDF avec pdf.js et jsPDF ---
+// --- Fusion de PDF (avec marges et qualité d'image corrigée) ---
 async function mergePDFs() {
     if (pdfFiles.length < 2) return;
 
@@ -186,76 +246,84 @@ async function mergePDFs() {
     pdfErrorMessage.classList.remove('show');
 
     try {
-        const mergedPdf = new jsPDF({
+        // Récupérer les marges
+        const marginTop = parseFloat(pdfMarginTop.value) || 20;
+        const marginBottom = parseFloat(pdfMarginBottom.value) || 20;
+        const marginLeft = parseFloat(pdfMarginLeft.value) || 20;
+        const marginRight = parseFloat(pdfMarginRight.value) || 20;
+
+        // Taille d'une page A4 en mm
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const usableWidth = pageWidth - marginLeft - marginRight;
+        const usableHeight = pageHeight - marginTop - marginBottom;
+
+        // Créer un nouveau PDF avec jsPDF
+        const doc = new jsPDF({
             orientation: 'portrait',
-            unit: 'pt',
+            unit: 'mm',
             format: 'a4'
         });
 
-        let isFirstPage = true;
+        // Traiter chaque PDF
+        for (let i = 0; i < pdfFiles.length; i++) {
+            const file = pdfFiles[i];
+            const fileURL = URL.createObjectURL(file);
+            const pdf = await pdfjsLib.getDocument({ url: fileURL }).promise;
 
-        for (const file of pdfFiles) {
-            const pdfData = await readPDFAsDataURL(file);
-            const pdf = await pdfjsLib.getDocument(pdfData).promise;
-
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
+            for (let j = 1; j <= pdf.numPages; j++) {
+                const page = await pdf.getPage(j);
+                // Utiliser un scale plus élevé pour une meilleure qualité
                 const scale = 2.0;
                 const viewport = page.getViewport({ scale: scale });
 
+                // Créer un canvas pour rendre la page
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-
                 await page.render({
                     canvasContext: context,
                     viewport: viewport
                 }).promise;
 
-                const imgData = canvas.toDataURL('image/png');
-
-                if (!isFirstPage) {
-                    mergedPdf.addPage('a4', 'portrait');
+                // Ajouter l'image au PDF avec les marges
+                if (i === 0 && j === 1) {
+                    doc.addImage(canvas, 'PNG', marginLeft, marginTop, usableWidth, usableHeight);
                 } else {
-                    isFirstPage = false;
+                    doc.addPage();
+                    doc.addImage(canvas, 'PNG', marginLeft, marginTop, usableWidth, usableHeight);
                 }
-
-                const pageWidth = mergedPdf.internal.pageSize.getWidth();
-                const pageHeight = mergedPdf.internal.pageSize.getHeight();
-                mergedPdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
             }
+            URL.revokeObjectURL(fileURL);
         }
 
-        mergedPdf.save('pdf-fusionne.pdf');
+        doc.save('pdf-fusionne.pdf');
+
     } catch (error) {
         console.error('Erreur lors de la fusion des PDF :', error);
         pdfErrorMessage.textContent = 'Erreur lors de la fusion : ' + error.message;
         pdfErrorMessage.classList.add('show');
     } finally {
         mergePdfBtn.disabled = false;
+        mergePdfBtn.textContent = 'Fusionner les PDF';
         updateMergePdfButtonState();
     }
 }
 
-// Fonction pour lire un PDF comme DataURL
-function readPDFAsDataURL(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
-// --- Conversion du texte en PDF ---
+// --- Conversion Texte → PDF (avec marges) ---
 function updateTextButtonState() {
-    textConvertBtn.disabled = textInput.value.trim() === '';
+    textDownloadBtn.disabled = textInput.value.trim() === '';
 }
 
 function convertTextToPDF() {
     const text = textInput.value.trim();
     if (!text) return;
+
+    const marginTop = parseFloat(textMarginTop.value) || 20;
+    const marginBottom = parseFloat(textMarginBottom.value) || 20;
+    const marginLeft = parseFloat(textMarginLeft.value) || 20;
+    const marginRight = parseFloat(textMarginRight.value) || 20;
 
     const doc = new jsPDF({
         orientation: 'portrait',
@@ -263,11 +331,9 @@ function convertTextToPDF() {
         format: 'a4'
     });
 
-    const lines = doc.splitTextToSize(text, 180);
-    doc.text(lines, 10, 10, { align: 'left' });
+    const maxWidth = doc.internal.pageSize.getWidth() - marginLeft - marginRight;
+    const lines = doc.splitTextToSize(text, maxWidth);
+    doc.text(lines, marginLeft, marginTop, { align: 'left' });
+
     doc.save('texte-converti.pdf');
 }
-
-// Initialisation des zones de dépôt
-setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
-setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
