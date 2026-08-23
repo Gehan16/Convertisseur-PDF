@@ -1,23 +1,59 @@
+/**
+ * Convertisseur PDF - Application 100% locale
+ * Convertit du texte, des images en PDF et fusionne des PDF
+ * sans aucun upload de données vers des serveurs externes.
+ */
+
+// ============================================================================
+// INITIALISATION
+// ============================================================================
+
 // Initialisation de jsPDF
 const { jsPDF } = window.jspdf;
 
-// Variables globales pour pdf.js
-let pdfjsLib = window['pdfjs-dist/build/pdf'];
+// Initialisation de pdf.js pour la fusion de PDF
+const pdfjsLib = window['pdfjs-dist/build/pdf'];
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.worker.min.js';
 
-// Données
+// ============================================================================
+// DONNÉES GLOBALES
+// ============================================================================
+
+/** @type {HTMLImageElement[]} */
 let imagesData = [];
+
+/** @type {File[]} */
 let pdfFiles = [];
 
-// Éléments DOM
+// ============================================================================
+// CONSTANTES
+// ============================================================================
+
+/** Dimensions standard A4 en mm */
+const A4_WIDTH = 210;
+const A4_HEIGHT = 297;
+
+/** Facteur de conversion DPI vers mm (72 DPI = 25.4 mm par inch) */
+const MM_PER_INCH = 25.4;
+const DPI = 72;
+
+// ============================================================================
+// ÉLÉMENTS DOM
+// ============================================================================
+
+// Éléments pour le texte
 const textInput = document.getElementById('textInput');
 const textDownloadBtn = document.getElementById('textDownloadBtn');
 const textSettingsBtn = document.getElementById('textSettingsBtn');
+
+// Éléments pour les images
 const imageDropZone = document.getElementById('image-drop-zone');
 const imageFileInput = document.getElementById('imageFileInput');
 const imageThumbContainer = document.getElementById('image-thumbnail-container');
 const imagesConvertBtn = document.getElementById('imagesConvertBtn');
 const imageSettingsBtn = document.getElementById('imageSettingsBtn');
+
+// Éléments pour les PDF
 const pdfDropZone = document.getElementById('pdf-drop-zone');
 const pdfFileInput = document.getElementById('pdfFileInput');
 const pdfFileContainer = document.getElementById('pdf-file-container');
@@ -25,88 +61,124 @@ const mergePdfBtn = document.getElementById('mergePdfBtn');
 const pdfSettingsBtn = document.getElementById('pdfSettingsBtn');
 const pdfErrorMessage = document.getElementById('pdfErrorMessage');
 
-// Éléments pour les marges
+// Éléments pour les marges (texte)
 const textMargins = document.getElementById('textMargins');
 const textMarginTop = document.getElementById('textMarginTop');
 const textMarginBottom = document.getElementById('textMarginBottom');
 const textMarginLeft = document.getElementById('textMarginLeft');
 const textMarginRight = document.getElementById('textMarginRight');
 
+// Éléments pour les marges (images)
 const imageMargins = document.getElementById('imageMargins');
 const imageMarginTop = document.getElementById('imageMarginTop');
 const imageMarginBottom = document.getElementById('imageMarginBottom');
 const imageMarginLeft = document.getElementById('imageMarginLeft');
 const imageMarginRight = document.getElementById('imageMarginRight');
 
+// Éléments pour les marges (PDF)
 const pdfMargins = document.getElementById('pdfMargins');
 const pdfMarginTop = document.getElementById('pdfMarginTop');
 const pdfMarginBottom = document.getElementById('pdfMarginBottom');
 const pdfMarginLeft = document.getElementById('pdfMarginLeft');
 const pdfMarginRight = document.getElementById('pdfMarginRight');
 
-// Initialisation après chargement du DOM
+// ============================================================================
+// INITIALISATION AU CHARGEMENT DE LA PAGE
+// ============================================================================
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Configuration des zones de dépôt
     setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
     setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
 });
 
-// --- Fonctions communes ---
-function setupDropZone(dropZone, fileInput, handleFilesCallback) {
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
+// ============================================================================
+// FONCTIONS UTILITAIRES COMMUNES
+// ============================================================================
 
-    dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', (e) => {
-        dropZone.classList.remove('dragover');
-        handleFilesCallback({ target: { files: e.dataTransfer.files } });
-    });
-
-    dropZone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', handleFilesCallback);
-}
-
+/**
+ * Empêche les comportements par défaut du drag & drop
+ * @param {Event} e - L'événement à prévenir
+ */
 function preventDefaults(e) {
     e.preventDefault();
     e.stopPropagation();
 }
 
-// --- Toggle pour les marges ---
-function toggleTextMargins() {
-    if (textMargins.style.display === 'none') {
-        textMargins.style.display = 'block';
-        textSettingsBtn.textContent = '✅ Valider';
+/**
+ * Configure une zone de dépôt pour le drag & drop de fichiers
+ * @param {HTMLElement} dropZone - La zone de dépôt
+ * @param {HTMLElement} fileInput - L'input file associé
+ * @param {Function} handleFilesCallback - Callback pour gérer les fichiers
+ */
+function setupDropZone(dropZone, fileInput, handleFilesCallback) {
+    // Empêcher les comportements par défaut
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    // Gestion des styles pendant le drag
+    dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+    // Gestion du drop
+    dropZone.addEventListener('drop', (e) => {
+        dropZone.classList.remove('dragover');
+        handleFilesCallback({ target: { files: e.dataTransfer.files } });
+    });
+
+    // Gestion du clic sur la zone
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', handleFilesCallback);
+}
+
+// ============================================================================
+// FONCTIONS DE TOGGLE POUR LES MARGES
+// ============================================================================
+
+/**
+ * Bascule l'affichage des contrôles de marges
+ * @param {HTMLElement} marginsElement - L'élément contenant les contrôles de marges
+ * @param {HTMLElement} buttonElement - Le bouton à mettre à jour
+ * @param {string} defaultText - Texte du bouton en mode paramètres
+ * @param {string} validationText - Texte du bouton en mode validation
+ */
+function toggleMargins(marginsElement, buttonElement, defaultText, validationText) {
+    if (marginsElement.style.display === 'none') {
+        marginsElement.style.display = 'block';
+        buttonElement.textContent = validationText;
     } else {
-        textMargins.style.display = 'none';
-        textSettingsBtn.textContent = '⚙️ Paramètres';
+        marginsElement.style.display = 'none';
+        buttonElement.textContent = defaultText;
     }
+}
+
+// Handlers spécifiques pour chaque type de conversion
+function toggleTextMargins() {
+    toggleMargins(textMargins, textSettingsBtn, '🛠️ Paramètres', '✅ Valider');
 }
 
 function toggleImageMargins() {
-    if (imageMargins.style.display === 'none') {
-        imageMargins.style.display = 'block';
-        imageSettingsBtn.textContent = '✅ Valider';
-    } else {
-        imageMargins.style.display = 'none';
-        imageSettingsBtn.textContent = '⚙️ Paramètres';
-    }
+    toggleMargins(imageMargins, imageSettingsBtn, '🛠️ Paramètres', '✅ Valider');
 }
 
 function togglePdfMargins() {
-    if (pdfMargins.style.display === 'none') {
-        pdfMargins.style.display = 'block';
-        pdfSettingsBtn.textContent = '✅ Valider';
-    } else {
-        pdfMargins.style.display = 'none';
-        pdfSettingsBtn.textContent = '⚙️ Paramètres';
-    }
+    toggleMargins(pdfMargins, pdfSettingsBtn, '🛠️ Paramètres', '✅ Valider');
 }
 
-// --- Gestion des Images ---
+// ============================================================================
+// GESTION DES IMAGES
+// ============================================================================
+
+/**
+ * Gère les fichiers images sélectionnés ou déposés
+ * @param {Event} e - L'événement contenant les fichiers
+ */
 function handleImageFiles(e) {
     const files = [...e.target.files];
+    
     files.forEach(file => {
+        // Vérifier que le fichier est une image
         if (!file.type.startsWith('image/')) return;
 
         const reader = new FileReader();
@@ -121,9 +193,16 @@ function handleImageFiles(e) {
         };
         reader.readAsDataURL(file);
     });
+    
+    // Réinitialiser l'input pour permettre la sélection des mêmes fichiers
     imageFileInput.value = '';
 }
 
+/**
+ * Crée une miniature d'image dans l'interface
+ * @param {HTMLImageElement} imgObj - L'image à afficher
+ * @param {number} index - L'index de l'image dans imagesData
+ */
 function createImageThumbnail(imgObj, index) {
     const wrapper = document.createElement('div');
     wrapper.className = 'file-wrapper';
@@ -144,77 +223,93 @@ function createImageThumbnail(imgObj, index) {
     imageThumbContainer.appendChild(wrapper);
 }
 
+/**
+ * Supprime une image de la liste
+ * @param {number} index - L'index de l'image à supprimer
+ * @param {HTMLElement} element - L'élément DOM à supprimer
+ */
 function removeImage(index, element) {
     imagesData.splice(index, 1);
     element.remove();
+    
+    // Reconstruire la liste des miniatures avec les nouveaux index
     imageThumbContainer.innerHTML = '';
     imagesData.forEach((img, i) => createImageThumbnail(img, i));
     updateImagesButtonState();
 }
 
+/**
+ * Met à jour l'état du bouton de conversion d'images
+ */
 function updateImagesButtonState() {
     imagesConvertBtn.disabled = imagesData.length === 0;
 }
 
-// --- Conversion Images → PDF (avec marges) ---
-imagesConvertBtn.addEventListener('click', function() {
+// ============================================================================
+// CONVERSION IMAGES → PDF
+// ============================================================================
+
+/**
+ * Ajoute une image au PDF en respectant son rapport d'aspect
+ * @param {jsPDF} doc - Le document PDF
+ * @param {HTMLImageElement} img - L'image à ajouter
+ * @param {Object} margins - Les marges à appliquer (top, bottom, left, right)
+ */
+function addImageWithAspectRatio(doc, img, margins) {
+    const aspectRatio = img.width / img.height;
+    const currentPageWidth = doc.internal.pageSize.getWidth();
+    const currentPageHeight = doc.internal.pageSize.getHeight();
+    
+    // Calculer l'espace disponible
+    const maxWidth = currentPageWidth - margins.left - margins.right;
+    const maxHeight = currentPageHeight - margins.top - margins.bottom;
+
+    // Calculer les dimensions finales en respectant le rapport d'aspect
+    let finalWidth = maxWidth;
+    let finalHeight = maxWidth / aspectRatio;
+
+    // Si trop haut, ajuster en fonction de la hauteur
+    if (finalHeight > maxHeight) {
+        finalHeight = maxHeight;
+        finalWidth = finalHeight * aspectRatio;
+    }
+
+    // Centrer l'image dans l'espace disponible
+    const x = margins.left + (maxWidth - finalWidth) / 2;
+    const y = margins.top + (maxHeight - finalHeight) / 2;
+
+    doc.addImage(img, 'JPEG', x, y, finalWidth, finalHeight);
+}
+
+/**
+ * Convertit les images sélectionnées en PDF
+ */
+function convertImagesToPDF() {
     if (imagesData.length === 0) return;
 
+    // Récupérer les marges
     const marginTop = parseFloat(imageMarginTop.value);
     const marginBottom = parseFloat(imageMarginBottom.value);
     const marginLeft = parseFloat(imageMarginLeft.value);
     const marginRight = parseFloat(imageMarginRight.value);
 
-    // Taille standard A4 en mm
-    const a4Width = 210;
-    const a4Height = 297;
-
+    // Créer le document PDF avec une première page A4 portrait
     const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
     });
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const availableWidth = pageWidth - marginLeft - marginRight;
-    const availableHeight = pageHeight - marginTop - marginBottom;
-
-    // Fonction pour ajouter une image en respectant son rapport d'aspect
-    function addImageWithAspectRatio(doc, img, margins) {
-        const aspectRatio = img.width / img.height;
-        const orientation = img.width > img.height ? 'landscape' : 'portrait';
-
-        const currentPageWidth = doc.internal.pageSize.getWidth();
-        const currentPageHeight = doc.internal.pageSize.getHeight();
-        const maxWidth = currentPageWidth - margins.left - margins.right;
-        const maxHeight = currentPageHeight - margins.top - margins.bottom;
-
-        // Calculer les dimensions en respectant le rapport d'aspect
-        let finalWidth = maxWidth;
-        let finalHeight = maxWidth / aspectRatio;
-
-        if (finalHeight > maxHeight) {
-            finalHeight = maxHeight;
-            finalWidth = finalHeight * aspectRatio;
-        }
-
-        // Centrer l'image
-        const x = margins.left + (maxWidth - finalWidth) / 2;
-        const y = margins.top + (maxHeight - finalHeight) / 2;
-
-        doc.addImage(img, 'JPEG', x, y, finalWidth, finalHeight);
-    }
-
     // Ajouter toutes les images
     imagesData.forEach((img, index) => {
-        // Créer une nouvelle page pour chaque image sauf la première
+        // Pour chaque image sauf la première, créer une nouvelle page
         if (index > 0) {
             const orientation = img.width > img.height ? 'landscape' : 'portrait';
-            const newPageWidth = orientation === 'landscape' ? a4Height : a4Width;
-            const newPageHeight = orientation === 'landscape' ? a4Width : a4Height;
+            const newPageWidth = orientation === 'landscape' ? A4_HEIGHT : A4_WIDTH;
+            const newPageHeight = orientation === 'landscape' ? A4_WIDTH : A4_HEIGHT;
             doc.addPage([newPageWidth, newPageHeight], orientation);
         }
+        
         addImageWithAspectRatio(doc, img, {
             top: marginTop,
             bottom: marginBottom,
@@ -224,20 +319,40 @@ imagesConvertBtn.addEventListener('click', function() {
     });
 
     doc.save('album-photos.pdf');
-});
+}
 
-// --- Gestion des PDF ---
+// Attacher l'événement au bouton
+imagesConvertBtn.addEventListener('click', convertImagesToPDF);
+
+// ============================================================================
+// GESTION DES PDF
+// ============================================================================
+
+/**
+ * Gère les fichiers PDF sélectionnés ou déposés
+ * @param {Event} e - L'événement contenant les fichiers
+ */
 function handlePDFFiles(e) {
     const files = [...e.target.files];
+    
     files.forEach(file => {
+        // Vérifier que le fichier est un PDF
         if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) return;
+        
         pdfFiles.push(file);
         createPDFThumbnail(file, pdfFiles.length - 1);
         updateMergePdfButtonState();
     });
+    
+    // Réinitialiser l'input
     pdfFileInput.value = '';
 }
 
+/**
+ * Crée une miniature de PDF dans l'interface
+ * @param {File} file - Le fichier PDF
+ * @param {number} index - L'index du fichier dans pdfFiles
+ */
 function createPDFThumbnail(file, index) {
     const wrapper = document.createElement('div');
     wrapper.className = 'file-wrapper';
@@ -263,22 +378,39 @@ function createPDFThumbnail(file, index) {
     pdfFileContainer.appendChild(wrapper);
 }
 
+/**
+ * Supprime un PDF de la liste
+ * @param {number} index - L'index du PDF à supprimer
+ * @param {HTMLElement} element - L'élément DOM à supprimer
+ */
 function removePDF(index, element) {
     pdfFiles.splice(index, 1);
     element.remove();
+    
+    // Reconstruire la liste des miniatures
     pdfFileContainer.innerHTML = '';
     pdfFiles.forEach((file, i) => createPDFThumbnail(file, i));
     updateMergePdfButtonState();
 }
 
+/**
+ * Met à jour l'état du bouton de fusion de PDF
+ */
 function updateMergePdfButtonState() {
     mergePdfBtn.disabled = pdfFiles.length < 2;
 }
 
-// --- Fusion de PDF (avec marges et qualité d'image corrigée) ---
+// ============================================================================
+// FUSION DE PDF
+// ============================================================================
+
+/**
+ * Fusionne les PDF sélectionnés en un seul fichier
+ */
 async function mergePDFs() {
     if (pdfFiles.length < 2) return;
 
+    // Désactiver le bouton pendant le traitement
     mergePdfBtn.disabled = true;
     mergePdfBtn.textContent = 'Fusion en cours...';
     pdfErrorMessage.classList.remove('show');
@@ -290,7 +422,7 @@ async function mergePDFs() {
         const marginLeft = parseFloat(pdfMarginLeft.value);
         const marginRight = parseFloat(pdfMarginRight.value);
 
-        // Créer un nouveau PDF avec jsPDF
+        // Créer un nouveau PDF avec jsPDF (première page A4 portrait par défaut)
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
@@ -303,41 +435,42 @@ async function mergePDFs() {
             const fileURL = URL.createObjectURL(file);
             const pdf = await pdfjsLib.getDocument({ url: fileURL }).promise;
 
+            // Traiter chaque page du PDF
             for (let j = 1; j <= pdf.numPages; j++) {
                 const page = await pdf.getPage(j);
                 
-                // Récupérer l'orientation et la taille de la page source
+                // Récupérer l'orientation et les dimensions de la page source
                 const sourceViewport = page.getViewport({ scale: 1.0 });
                 const isLandscape = sourceViewport.width > sourceViewport.height;
                 const orientation = isLandscape ? 'landscape' : 'portrait';
                 
-                // Calculer les dimensions de la page en mm (72 dpi = 25.4 mm par inch)
-                const mmPerInch = 25.4;
-                const dpi = 72;
-                const sourceWidthMm = (sourceViewport.width / dpi) * mmPerInch;
-                const sourceHeightMm = (sourceViewport.height / dpi) * mmPerInch;
+                // Calculer les dimensions de la page en mm
+                const sourceWidthMm = (sourceViewport.width / DPI) * MM_PER_INCH;
+                const sourceHeightMm = (sourceViewport.height / DPI) * MM_PER_INCH;
                 
                 // Créer une nouvelle page avec les dimensions de la page source
                 if (i === 0 && j === 1) {
-                    // Première page : utiliser les dimensions du document initial
+                    // Première page : remplacer la page initiale si nécessaire
                     if (isLandscape) {
-                        doc.deletePage(1); // Supprimer la page portrait initiale
+                        doc.deletePage(1);
                         doc.addPage([sourceHeightMm, sourceWidthMm], orientation);
                     }
                 } else {
-                    doc.addPage([isLandscape ? sourceHeightMm : sourceWidthMm, 
-                                 isLandscape ? sourceWidthMm : sourceHeightMm], orientation);
+                    doc.addPage([
+                        isLandscape ? sourceHeightMm : sourceWidthMm,
+                        isLandscape ? sourceWidthMm : sourceHeightMm
+                    ], orientation);
                 }
 
-                // Utiliser un scale plus élevé pour une meilleure qualité
+                // Rendre la page sur un canvas avec un scale élevé pour la qualité
                 const scale = 2.0;
                 const viewport = page.getViewport({ scale: scale });
 
-                // Créer un canvas pour rendre la page
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
+                
                 await page.render({
                     canvasContext: context,
                     viewport: viewport
@@ -351,6 +484,8 @@ async function mergePDFs() {
                 
                 doc.addImage(canvas, 'PNG', marginLeft, marginTop, usableWidth, usableHeight);
             }
+            
+            // Libérer l'URL objet
             URL.revokeObjectURL(fileURL);
         }
 
@@ -361,34 +496,51 @@ async function mergePDFs() {
         pdfErrorMessage.textContent = 'Erreur lors de la fusion : ' + error.message;
         pdfErrorMessage.classList.add('show');
     } finally {
+        // Réactiver le bouton
         mergePdfBtn.disabled = false;
         mergePdfBtn.textContent = 'Fusionner les PDF';
         updateMergePdfButtonState();
     }
 }
 
-// --- Conversion Texte → PDF (avec marges) ---
+// ============================================================================
+// CONVERSION TEXTE → PDF
+// ============================================================================
+
+/**
+ * Met à jour l'état du bouton de téléchargement de texte
+ */
 function updateTextButtonState() {
     textDownloadBtn.disabled = textInput.value.trim() === '';
 }
 
+/**
+ * Convertit le texte en PDF
+ */
 function convertTextToPDF() {
     const text = textInput.value.trim();
     if (!text) return;
 
+    // Récupérer les marges
     const marginTop = parseFloat(textMarginTop.value);
     const marginBottom = parseFloat(textMarginBottom.value);
     const marginLeft = parseFloat(textMarginLeft.value);
     const marginRight = parseFloat(textMarginRight.value);
 
+    // Créer le document PDF
     const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
     });
 
+    // Calculer la largeur maximale pour le texte
     const maxWidth = doc.internal.pageSize.getWidth() - marginLeft - marginRight;
+    
+    // Découper le texte en lignes qui tiennent dans la largeur
     const lines = doc.splitTextToSize(text, maxWidth);
+    
+    // Ajouter le texte au PDF
     doc.text(lines, marginLeft, marginTop, { align: 'left' });
 
     doc.save('texte-converti.pdf');
