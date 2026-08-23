@@ -75,6 +75,9 @@ const imageMarginBottom = document.getElementById('imageMarginBottom');
 const imageMarginLeft = document.getElementById('imageMarginLeft');
 const imageMarginRight = document.getElementById('imageMarginRight');
 
+// Option pour étirer les images
+const stretchImagesCheckbox = document.getElementById('stretchImages');
+
 // Éléments pour les marges (PDF)
 const pdfMargins = document.getElementById('pdfMargins');
 const pdfMarginTop = document.getElementById('pdfMarginTop');
@@ -300,6 +303,9 @@ function convertImagesToPDF() {
         format: 'a4'
     });
 
+    // Vérifier si l'utilisateur veut étirer les images
+    const stretchImages = stretchImagesCheckbox ? stretchImagesCheckbox.checked : false;
+
     // Ajouter toutes les images
     imagesData.forEach((img, index) => {
         // Pour chaque image sauf la première, créer une nouvelle page
@@ -310,12 +316,22 @@ function convertImagesToPDF() {
             doc.addPage([newPageWidth, newPageHeight], orientation);
         }
         
-        addImageWithAspectRatio(doc, img, {
-            top: marginTop,
-            bottom: marginBottom,
-            left: marginLeft,
-            right: marginRight
-        });
+        if (stretchImages) {
+            // Mode étiré : l'image remplit toute la page (moins les marges)
+            const currentPageWidth = doc.internal.pageSize.getWidth();
+            const currentPageHeight = doc.internal.pageSize.getHeight();
+            const imgWidth = currentPageWidth - marginLeft - marginRight;
+            const imgHeight = currentPageHeight - marginTop - marginBottom;
+            doc.addImage(img, 'JPEG', marginLeft, marginTop, imgWidth, imgHeight);
+        } else {
+            // Mode normal : respect du rapport d'aspect
+            addImageWithAspectRatio(doc, img, {
+                top: marginTop,
+                bottom: marginBottom,
+                left: marginLeft,
+                right: marginRight
+            });
+        }
     });
 
     doc.save('album-photos.pdf');
