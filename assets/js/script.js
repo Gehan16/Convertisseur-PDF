@@ -160,10 +160,10 @@ function updateImagesButtonState() {
 imagesConvertBtn.addEventListener('click', function() {
     if (imagesData.length === 0) return;
 
-    const marginTop = parseFloat(imageMarginTop.value) || 1;
-    const marginBottom = parseFloat(imageMarginBottom.value) || 1;
-    const marginLeft = parseFloat(imageMarginLeft.value) || 1;
-    const marginRight = parseFloat(imageMarginRight.value) || 1;
+    const marginTop = parseFloat(imageMarginTop.value);
+    const marginBottom = parseFloat(imageMarginBottom.value);
+    const marginLeft = parseFloat(imageMarginLeft.value);
+    const marginRight = parseFloat(imageMarginRight.value);
 
     const firstImg = imagesData[0];
     const doc = new jsPDF({
@@ -247,10 +247,10 @@ async function mergePDFs() {
 
     try {
         // Récupérer les marges
-        const marginTop = parseFloat(pdfMarginTop.value) || 1;
-        const marginBottom = parseFloat(pdfMarginBottom.value) || 1;
-        const marginLeft = parseFloat(pdfMarginLeft.value) || 1;
-        const marginRight = parseFloat(pdfMarginRight.value) || 1;
+        const marginTop = parseFloat(pdfMarginTop.value);
+        const marginBottom = parseFloat(pdfMarginBottom.value);
+        const marginLeft = parseFloat(pdfMarginLeft.value);
+        const marginRight = parseFloat(pdfMarginRight.value);
 
         // Taille d'une page A4 en mm
         const pageWidth = 210;
@@ -320,10 +320,10 @@ function convertTextToPDF() {
     const text = textInput.value.trim();
     if (!text) return;
 
-    const marginTop = parseFloat(textMarginTop.value) || 20;
-    const marginBottom = parseFloat(textMarginBottom.value) || 20;
-    const marginLeft = parseFloat(textMarginLeft.value) || 20;
-    const marginRight = parseFloat(textMarginRight.value) || 20;
+    const marginTop = parseFloat(textMarginTop.value);
+    const marginBottom = parseFloat(textMarginBottom.value);
+    const marginLeft = parseFloat(textMarginLeft.value);
+    const marginRight = parseFloat(textMarginRight.value);
 
     const doc = new jsPDF({
         orientation: 'portrait',
