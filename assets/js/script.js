@@ -215,9 +215,6 @@ imagesConvertBtn.addEventListener('click', function() {
 
     // Ajouter toutes les images
     imagesData.forEach((img, index) => {
-        if (index > 0) {
-            doc.addPage();
-        }
         addImageWithAspectRatio(doc, img, {
             top: marginTop,
             bottom: marginBottom,
