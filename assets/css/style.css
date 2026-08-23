@@ -49,7 +49,7 @@ body {
 }
 
 .logo {
-    max-width: 80px;
+    max-width: 96px;  /* 80px * 1.2 = 96px (20% plus gros) */
     height: auto;
     background-color: transparent;
 }
