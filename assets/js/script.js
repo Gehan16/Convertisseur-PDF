@@ -160,10 +160,10 @@ function updateImagesButtonState() {
 imagesConvertBtn.addEventListener('click', function() {
     if (imagesData.length === 0) return;
 
-    const marginTop = parseFloat(imageMarginTop.value) || 20;
-    const marginBottom = parseFloat(imageMarginBottom.value) || 20;
-    const marginLeft = parseFloat(imageMarginLeft.value) || 20;
-    const marginRight = parseFloat(imageMarginRight.value) || 20;
+    const marginTop = parseFloat(imageMarginTop.value) || 1;
+    const marginBottom = parseFloat(imageMarginBottom.value) || 1;
+    const marginLeft = parseFloat(imageMarginLeft.value) || 1;
+    const marginRight = parseFloat(imageMarginRight.value) || 1;
 
     const firstImg = imagesData[0];
     const doc = new jsPDF({
@@ -247,10 +247,10 @@ async function mergePDFs() {
 
     try {
         // Récupérer les marges
-        const marginTop = parseFloat(pdfMarginTop.value) || 20;
-        const marginBottom = parseFloat(pdfMarginBottom.value) || 20;
-        const marginLeft = parseFloat(pdfMarginLeft.value) || 20;
-        const marginRight = parseFloat(pdfMarginRight.value) || 20;
+        const marginTop = parseFloat(pdfMarginTop.value) || 1;
+        const marginBottom = parseFloat(pdfMarginBottom.value) || 1;
+        const marginLeft = parseFloat(pdfMarginLeft.value) || 1;
+        const marginRight = parseFloat(pdfMarginRight.value) || 1;
 
         // Taille d'une page A4 en mm
         const pageWidth = 210;
