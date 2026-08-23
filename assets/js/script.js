@@ -165,29 +165,66 @@ imagesConvertBtn.addEventListener('click', function() {
     const marginLeft = parseFloat(imageMarginLeft.value);
     const marginRight = parseFloat(imageMarginRight.value);
 
-    const firstImg = imagesData[0];
+    // Taille standard A4 en mm
+    const a4Width = 210;
+    const a4Height = 297;
+
     const doc = new jsPDF({
-        orientation: firstImg.width > firstImg.height ? 'landscape' : 'portrait',
-        unit: 'mm'
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
     });
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const imgWidth = pageWidth - marginLeft - marginRight;
-    const imgHeight = pageHeight - marginTop - marginBottom;
+    const availableWidth = pageWidth - marginLeft - marginRight;
+    const availableHeight = pageHeight - marginTop - marginBottom;
 
-    doc.addImage(firstImg, 'JPEG', marginLeft, marginTop, imgWidth, imgHeight);
-
-    for (let i = 1; i < imagesData.length; i++) {
-        const img = imagesData[i];
+    // Fonction pour ajouter une image en respectant son rapport d'aspect
+    function addImageWithAspectRatio(doc, img, margins) {
+        const aspectRatio = img.width / img.height;
         const orientation = img.width > img.height ? 'landscape' : 'portrait';
-        const newPageWidth = orientation === 'landscape' ? pageHeight : pageWidth;
-        const newPageHeight = orientation === 'landscape' ? pageWidth : pageHeight;
-        const newImgWidth = newPageWidth - marginLeft - marginRight;
-        const newImgHeight = newPageHeight - marginTop - marginBottom;
-        doc.addPage([newPageWidth, newPageHeight], orientation);
-        doc.addImage(img, 'JPEG', marginLeft, marginTop, newImgWidth, newImgHeight);
+
+        // Créer une nouvelle page avec l'orientation adaptée
+        if (doc.internal.getNumberOfPages() > 1) {
+            const newPageWidth = orientation === 'landscape' ? a4Height : a4Width;
+            const newPageHeight = orientation === 'landscape' ? a4Width : a4Height;
+            doc.addPage([newPageWidth, newPageHeight], orientation);
+        }
+
+        const currentPageWidth = doc.internal.pageSize.getWidth();
+        const currentPageHeight = doc.internal.pageSize.getHeight();
+        const maxWidth = currentPageWidth - margins.left - margins.right;
+        const maxHeight = currentPageHeight - margins.top - margins.bottom;
+
+        // Calculer les dimensions en respectant le rapport d'aspect
+        let finalWidth = maxWidth;
+        let finalHeight = maxWidth / aspectRatio;
+
+        if (finalHeight > maxHeight) {
+            finalHeight = maxHeight;
+            finalWidth = finalHeight * aspectRatio;
+        }
+
+        // Centrer l'image
+        const x = margins.left + (maxWidth - finalWidth) / 2;
+        const y = margins.top + (maxHeight - finalHeight) / 2;
+
+        doc.addImage(img, 'JPEG', x, y, finalWidth, finalHeight);
     }
+
+    // Ajouter toutes les images
+    imagesData.forEach((img, index) => {
+        if (index > 0) {
+            doc.addPage();
+        }
+        addImageWithAspectRatio(doc, img, {
+            top: marginTop,
+            bottom: marginBottom,
+            left: marginLeft,
+            right: marginRight
+        });
+    });
 
     doc.save('album-photos.pdf');
 });
