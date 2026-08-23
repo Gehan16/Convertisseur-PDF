@@ -181,8 +181,12 @@ imagesConvertBtn.addEventListener('click', function() {
     for (let i = 1; i < imagesData.length; i++) {
         const img = imagesData[i];
         const orientation = img.width > img.height ? 'landscape' : 'portrait';
-        doc.addPage([pageWidth, pageHeight], orientation);
-        doc.addImage(img, 'JPEG', marginLeft, marginTop, imgWidth, imgHeight);
+        const newPageWidth = orientation === 'landscape' ? pageHeight : pageWidth;
+        const newPageHeight = orientation === 'landscape' ? pageWidth : pageHeight;
+        const newImgWidth = newPageWidth - marginLeft - marginRight;
+        const newImgHeight = newPageHeight - marginTop - marginBottom;
+        doc.addPage([newPageWidth, newPageHeight], orientation);
+        doc.addImage(img, 'JPEG', marginLeft, marginTop, newImgWidth, newImgHeight);
     }
 
     doc.save('album-photos.pdf');
