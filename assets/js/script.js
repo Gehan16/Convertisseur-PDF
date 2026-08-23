@@ -185,13 +185,6 @@ imagesConvertBtn.addEventListener('click', function() {
         const aspectRatio = img.width / img.height;
         const orientation = img.width > img.height ? 'landscape' : 'portrait';
 
-        // Créer une nouvelle page avec l'orientation adaptée
-        if (doc.internal.getNumberOfPages() > 1) {
-            const newPageWidth = orientation === 'landscape' ? a4Height : a4Width;
-            const newPageHeight = orientation === 'landscape' ? a4Width : a4Height;
-            doc.addPage([newPageWidth, newPageHeight], orientation);
-        }
-
         const currentPageWidth = doc.internal.pageSize.getWidth();
         const currentPageHeight = doc.internal.pageSize.getHeight();
         const maxWidth = currentPageWidth - margins.left - margins.right;
@@ -215,6 +208,13 @@ imagesConvertBtn.addEventListener('click', function() {
 
     // Ajouter toutes les images
     imagesData.forEach((img, index) => {
+        // Créer une nouvelle page pour chaque image sauf la première
+        if (index > 0) {
+            const orientation = img.width > img.height ? 'landscape' : 'portrait';
+            const newPageWidth = orientation === 'landscape' ? a4Height : a4Width;
+            const newPageHeight = orientation === 'landscape' ? a4Width : a4Height;
+            doc.addPage([newPageWidth, newPageHeight], orientation);
+        }
         addImageWithAspectRatio(doc, img, {
             top: marginTop,
             bottom: marginBottom,
