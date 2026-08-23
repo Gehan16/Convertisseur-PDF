@@ -290,12 +290,6 @@ async function mergePDFs() {
         const marginLeft = parseFloat(pdfMarginLeft.value);
         const marginRight = parseFloat(pdfMarginRight.value);
 
-        // Taille d'une page A4 en mm
-        const pageWidth = 210;
-        const pageHeight = 297;
-        const usableWidth = pageWidth - marginLeft - marginRight;
-        const usableHeight = pageHeight - marginTop - marginBottom;
-
         // Créer un nouveau PDF avec jsPDF
         const doc = new jsPDF({
             orientation: 'portrait',
@@ -311,6 +305,30 @@ async function mergePDFs() {
 
             for (let j = 1; j <= pdf.numPages; j++) {
                 const page = await pdf.getPage(j);
+                
+                // Récupérer l'orientation et la taille de la page source
+                const sourceViewport = page.getViewport({ scale: 1.0 });
+                const isLandscape = sourceViewport.width > sourceViewport.height;
+                const orientation = isLandscape ? 'landscape' : 'portrait';
+                
+                // Calculer les dimensions de la page en mm (72 dpi = 25.4 mm par inch)
+                const mmPerInch = 25.4;
+                const dpi = 72;
+                const sourceWidthMm = (sourceViewport.width / dpi) * mmPerInch;
+                const sourceHeightMm = (sourceViewport.height / dpi) * mmPerInch;
+                
+                // Créer une nouvelle page avec les dimensions de la page source
+                if (i === 0 && j === 1) {
+                    // Première page : utiliser les dimensions du document initial
+                    if (isLandscape) {
+                        doc.deletePage(1); // Supprimer la page portrait initiale
+                        doc.addPage([sourceHeightMm, sourceWidthMm], orientation);
+                    }
+                } else {
+                    doc.addPage([isLandscape ? sourceHeightMm : sourceWidthMm, 
+                                 isLandscape ? sourceWidthMm : sourceHeightMm], orientation);
+                }
+
                 // Utiliser un scale plus élevé pour une meilleure qualité
                 const scale = 2.0;
                 const viewport = page.getViewport({ scale: scale });
@@ -326,12 +344,12 @@ async function mergePDFs() {
                 }).promise;
 
                 // Ajouter l'image au PDF avec les marges
-                if (i === 0 && j === 1) {
-                    doc.addImage(canvas, 'PNG', marginLeft, marginTop, usableWidth, usableHeight);
-                } else {
-                    doc.addPage();
-                    doc.addImage(canvas, 'PNG', marginLeft, marginTop, usableWidth, usableHeight);
-                }
+                const currentPageWidth = doc.internal.pageSize.getWidth();
+                const currentPageHeight = doc.internal.pageSize.getHeight();
+                const usableWidth = currentPageWidth - marginLeft - marginRight;
+                const usableHeight = currentPageHeight - marginTop - marginBottom;
+                
+                doc.addImage(canvas, 'PNG', marginLeft, marginTop, usableWidth, usableHeight);
             }
             URL.revokeObjectURL(fileURL);
         }
