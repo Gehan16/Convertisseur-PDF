@@ -528,8 +528,8 @@ async function mergePDFs() {
  */
 
 /**
- * Formate le texte dans l'éditeur (alignement et gras)
- * @param {string} command - left, center, right ou bold
+ * Formate le texte dans l'éditeur (alignement, gras, souligné)
+ * @param {string} command - left, center, right, bold ou underline
  */
 function formatText(command) {
     switch (command) {
@@ -544,6 +544,9 @@ function formatText(command) {
             break;
         case 'bold':
             document.execCommand('bold', false, null);
+            break;
+        case 'underline':
+            document.execCommand('underline', false, null);
             break;
     }
     textEditor.focus();
@@ -605,13 +608,21 @@ function parseFormattedText() {
             isBold = true;
         }
 
+        // Détecter si le texte est souligné
+        let isUnderline = false;
+        const underlineElements = element.querySelectorAll('u');
+        if (underlineElements.length > 0) {
+            isUnderline = true;
+        }
+
         // Extraire le texte brut (conserve les espaces)
         const rawText = element.textContent || element.innerText || '';
 
         result.push({
             text: rawText || ' ',  // Garder un espace pour les lignes vides
             align: align,
-            isBold: isBold
+            isBold: isBold,
+            isUnderline: isUnderline
         });
     });
 
@@ -671,6 +682,15 @@ function convertTextToPDF() {
         // Déterminer le style de police en fonction du gras
         const fontStyle = line.isBold ? 'bold' : 'normal';
         doc.setFont('helvetica', fontStyle);
+        
+        // Appliquer le soulignement si nécessaire
+        if (line.isUnderline) {
+            doc.setTextColor(0, 0, 0);
+            // Dessiner une ligne sous le texte
+            const textWidth = doc.getTextWidth(splitLines[0] || line.text);
+            const lineY = yPosition + 1; // Position de la ligne de soulignement
+            doc.line(xPosition, lineY, xPosition + textWidth, lineY);
+        }
         
         // Ajouter le texte avec l'alignement
         doc.text(splitLines, xPosition, yPosition, { align: line.align });
