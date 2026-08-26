@@ -606,6 +606,15 @@ function parseFormattedText() {
         const boldElements = element.querySelectorAll('b, strong');
         if (boldElements.length > 0) {
             isBold = true;
+        } else {
+            // Vérifier les spans avec font-weight: bold
+            const boldSpans = element.querySelectorAll('span[style*="font-weight"]');
+            boldSpans.forEach(span => {
+                const style = span.getAttribute('style') || '';
+                if (style.includes('bold') || style.includes('700')) {
+                    isBold = true;
+                }
+            });
         }
 
         // Détecter si le texte est souligné
@@ -613,6 +622,15 @@ function parseFormattedText() {
         const underlineElements = element.querySelectorAll('u');
         if (underlineElements.length > 0) {
             isUnderline = true;
+        } else {
+            // Vérifier les spans avec text-decoration: underline
+            const underlineSpans = element.querySelectorAll('span[style*="text-decoration"]');
+            underlineSpans.forEach(span => {
+                const style = span.getAttribute('style') || '';
+                if (style.includes('underline')) {
+                    isUnderline = true;
+                }
+            });
         }
 
         // Extraire le texte brut (conserve les espaces)
