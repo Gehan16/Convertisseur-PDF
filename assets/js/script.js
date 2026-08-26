@@ -576,7 +576,7 @@ function parseFormattedText() {
     }
 
     // Traiter chaque élément (ligne)
-    lineElements.forEach(element => {
+    lineElements.forEach((element, index) => {
         const hasBr = element.querySelector('br') !== null;
         const trimmedText = element.textContent.trim();
         const isEmpty = trimmedText === '' && hasBr;
@@ -603,20 +603,26 @@ function parseFormattedText() {
         // Extraire les segments de texte avec leur formatage
         const segments = extractTextSegments(element.childNodes, align);
         
-        // Vérifier si cet élément contient un <br> à la fin (saut de ligne manuel)
-        const brElements = element.querySelectorAll('br');
-        const hasTrailingBr = brElements.length > 0;
+        // Ajouter les segments
+        result.push(...segments);
         
-        // Si le dernier enfant est un <br>, ajouter un saut de ligne après les segments
-        if (hasTrailingBr && element.lastChild && element.lastChild.tagName === 'BR') {
-            result.push(...segments);
+        // Ajouter un saut de ligne après chaque élément (sauf le dernier)
+        // sauf si on a déjà ajouté un saut de ligne manuel
+        const brElements = element.querySelectorAll('br');
+        const hasTrailingBr = brElements.length > 0 && element.lastChild && element.lastChild.tagName === 'BR';
+        
+        if (index < lineElements.length - 1 && !hasTrailingBr) {
             result.push({
                 text: '',
                 align: 'left',
                 isLineBreak: true
             });
-        } else {
-            result.push(...segments);
+        } else if (hasTrailingBr) {
+            result.push({
+                text: '',
+                align: 'left',
+                isLineBreak: true
+            });
         }
     });
 
