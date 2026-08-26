@@ -528,8 +528,8 @@ async function mergePDFs() {
  */
 
 /**
- * Formate le texte dans l'éditeur (alignement, gras, souligné, taille)
- * @param {string} command - left, center, right, bold, underline, small, medium ou large
+ * Formate le texte dans l'éditeur (alignement, gras, souligné)
+ * @param {string} command - left, center, right, bold ou underline
  */
 function formatText(command) {
     switch (command) {
@@ -547,15 +547,6 @@ function formatText(command) {
             break;
         case 'underline':
             document.execCommand('underline', false, null);
-            break;
-        case 'small':
-            document.execCommand('fontSize', false, '2');
-            break;
-        case 'medium':
-            document.execCommand('fontSize', false, '4');
-            break;
-        case 'large':
-            document.execCommand('fontSize', false, '6');
             break;
     }
     textEditor.focus();
@@ -627,26 +618,11 @@ function parseFormattedText() {
         // Extraire le texte brut (conserve les espaces)
         const rawText = element.textContent || element.innerText || '';
 
-        // Détecter la taille du texte
-        let fontSize = '16px'; // Moyen par défaut
-        const fontSpans = element.querySelectorAll('span[style*="font-size"]');
-        if (fontSpans.length > 0) {
-            const style = fontSpans[0].getAttribute('style') || '';
-            const sizeMatch = style.match(/font-size:\s*(\d+)px/);
-            if (sizeMatch) {
-                fontSize = sizeMatch[1] + 'px';
-            }
-        }
-
-        // Extraire le texte brut (conserve les espaces)
-        const rawText = element.textContent || element.innerText || '';
-
         result.push({
             text: rawText || ' ',  // Garder un espace pour les lignes vides
             align: align,
             isBold: isBold,
-            isUnderline: isUnderline,
-            fontSize: fontSize
+            isUnderline: isUnderline
         });
     });
 
@@ -705,16 +681,6 @@ function convertTextToPDF() {
         
         // Déterminer le style de police en fonction du gras
         const fontStyle = line.isBold ? 'bold' : 'normal';
-        // Appliquer la taille de police
-        let fontSizePt = 12; // Moyen par défaut
-        if (line.fontSize === '10px') fontSizePt = 8;
-        else if (line.fontSize === '12px') fontSizePt = 10;
-        else if (line.fontSize === '16px') fontSizePt = 12;
-        else if (line.fontSize === '18px') fontSizePt = 14;
-        else if (line.fontSize === '20px') fontSizePt = 16;
-        else if (line.fontSize === '24px') fontSizePt = 18;
-        
-        doc.setFontSize(fontSizePt);
         doc.setFont('helvetica', fontStyle);
         
         // Appliquer le soulignement si nécessaire
