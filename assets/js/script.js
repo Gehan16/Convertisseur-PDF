@@ -565,6 +565,7 @@ async function mergePDFs() {
 /**
  * Convertit le texte en PDF avec formatage (utilisant Quill)
  * Gère le formatage par segment de texte (gras, italique, souligné)
+ * Gère le retour à la ligne automatique
  */
 function convertTextToPDF() {
     const htmlContent = quill.root.innerHTML;
@@ -621,19 +622,23 @@ function convertTextToPDF() {
             // Paragraphe vide = saut de ligne
             yPosition += lineHeightMm;
         } else {
-            // Calculer la largeur totale de tous les segments pour le positionnement
-            const fullText = segments.map(s => s.text).join('');
-            const totalWidth = doc.getTextWidth(fullText);
-            
             // Calculer la position X de départ en fonction de l'alignement
             let currentX = marginLeft;
             if (align === 'center') {
-                currentX = pageWidth / 2 - totalWidth / 2;
+                // Pour l'alignement centré, on ne peut pas calculer la position de départ
+                // car on ne connaît pas encore la largeur totale des segments sur la ligne
+                // On va donc traiter les segments avec align: 'left' et centrer chaque ligne
+                currentX = pageWidth / 2;
             } else if (align === 'right') {
-                currentX = pageWidth - marginRight - totalWidth;
+                currentX = pageWidth - marginRight;
+            } else {
+                currentX = marginLeft;
             }
 
-            // Traiter chaque segment avec son propre formatage
+            // Traiter les segments avec retour à la ligne automatique
+            let lineSegments = [];
+            let lineWidth = 0;
+            
             segments.forEach(segment => {
                 // Appliquer le style du segment
                 let fontStyle = 'normal';
@@ -647,26 +652,75 @@ function convertTextToPDF() {
                 
                 doc.setFont('helvetica', fontStyle);
                 doc.setFontSize(12);
-                doc.setTextColor(0, 0, 0);
 
-                // Calculer la largeur du segment
-                const segmentWidth = doc.getTextWidth(segment.text);
+                // Découper le texte du segment en lignes qui tiennent dans maxWidth
+                const splitTexts = doc.splitTextToSize(segment.text, maxWidth - lineWidth);
                 
-                // Appliquer le soulignement si nécessaire
-                if (segment.isUnderline) {
-                    const lineY = yPosition + 1;
-                    doc.line(currentX, lineY, currentX + segmentWidth, lineY);
+                if (splitTexts.length > 1) {
+                    // Le texte dépasse, il faut passer à la ligne
+                    // D'abord, ajouter les segments accumulés
+                    if (lineSegments.length > 0) {
+                        renderLine(doc, lineSegments, currentX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
+                        yPosition += lineHeightMm;
+                        lineSegments = [];
+                        lineWidth = 0;
+                        
+                        // Réinitialiser currentX pour la nouvelle ligne
+                        if (align === 'center') {
+                            currentX = pageWidth / 2;
+                        } else if (align === 'right') {
+                            currentX = pageWidth - marginRight;
+                        } else {
+                            currentX = marginLeft;
+                        }
+                    }
+                    
+                    // Ajouter la première partie du texte coupé
+                    lineSegments.push({
+                        text: splitTexts[0],
+                        isBold: segment.isBold,
+                        isItalic: segment.isItalic,
+                        isUnderline: segment.isUnderline
+                    });
+                    lineWidth += doc.getTextWidth(splitTexts[0]);
+                    
+                    // Ajouter les parties restantes (chacune sur une nouvelle ligne)
+                    for (let i = 1; i < splitTexts.length; i++) {
+                        if (lineSegments.length > 0) {
+                            renderLine(doc, lineSegments, currentX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
+                            yPosition += lineHeightMm;
+                            lineSegments = [];
+                            lineWidth = 0;
+                            
+                            if (align === 'center') {
+                                currentX = pageWidth / 2;
+                            } else if (align === 'right') {
+                                currentX = pageWidth - marginRight;
+                            } else {
+                                currentX = marginLeft;
+                            }
+                        }
+                        
+                        lineSegments.push({
+                            text: splitTexts[i],
+                            isBold: segment.isBold,
+                            isItalic: segment.isItalic,
+                            isUnderline: segment.isUnderline
+                        });
+                        lineWidth += doc.getTextWidth(splitTexts[i]);
+                    }
+                } else {
+                    // Le texte tient sur la ligne actuelle
+                    lineSegments.push(segment);
+                    lineWidth += doc.getTextWidth(segment.text);
                 }
-
-                // Ajouter le texte du segment
-                doc.text(segment.text, currentX, yPosition, { align: 'left' });
-                
-                // Mettre à jour currentX pour le prochain segment
-                currentX += segmentWidth;
             });
-
-            // Mettre à jour la position Y
-            yPosition += lineHeightMm;
+            
+            // Rendre la dernière ligne accumulée
+            if (lineSegments.length > 0) {
+                renderLine(doc, lineSegments, currentX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
+                yPosition += lineHeightMm;
+            }
         }
 
         // Ajouter un saut de ligne après chaque paragraphe (sauf le dernier)
@@ -682,6 +736,64 @@ function convertTextToPDF() {
     });
 
     doc.save('texte-converti.pdf');
+}
+
+/**
+ * Rend une ligne de segments de texte avec le bon alignement
+ * @param {jsPDF} doc - Le document PDF
+ * @param {Array} segments - Les segments à rendre
+ * @param {number} startX - Position X de départ
+ * @param {number} y - Position Y
+ * @param {string} align - Alignement (left, center, right)
+ * @param {number} maxWidth - Largeur maximale
+ * @param {number} marginLeft - Marge gauche
+ * @param {number} marginRight - Marge droite
+ * @param {number} pageWidth - Largeur de la page
+ */
+function renderLine(doc, segments, startX, y, align, maxWidth, marginLeft, marginRight, pageWidth) {
+    // Calculer la largeur totale de la ligne
+    let totalLineWidth = 0;
+    segments.forEach(seg => {
+        totalLineWidth += doc.getTextWidth(seg.text);
+    });
+    
+    // Calculer la position X de départ en fonction de l'alignement
+    let currentX = startX;
+    if (align === 'center') {
+        currentX = pageWidth / 2 - totalLineWidth / 2;
+    } else if (align === 'right') {
+        currentX = pageWidth - marginRight - totalLineWidth;
+    }
+    
+    // Rendre chaque segment
+    segments.forEach(segment => {
+        // Appliquer le style
+        let fontStyle = 'normal';
+        if (segment.isBold && segment.isItalic) {
+            fontStyle = 'bolditalic';
+        } else if (segment.isBold) {
+            fontStyle = 'bold';
+        } else if (segment.isItalic) {
+            fontStyle = 'italic';
+        }
+        
+        doc.setFont('helvetica', fontStyle);
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        
+        // Appliquer le soulignement si nécessaire
+        if (segment.isUnderline) {
+            const lineY = y + 1;
+            const textWidth = doc.getTextWidth(segment.text);
+            doc.line(currentX, lineY, currentX + textWidth, lineY);
+        }
+        
+        // Ajouter le texte
+        doc.text(segment.text, currentX, y, { align: 'left' });
+        
+        // Mettre à jour currentX
+        currentX += doc.getTextWidth(segment.text);
+    });
 }
 
 /**
