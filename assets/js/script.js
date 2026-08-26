@@ -606,18 +606,9 @@ function parseFormattedText() {
         // Ajouter les segments
         result.push(...segments);
         
-        // Ajouter un saut de ligne après chaque élément (sauf le dernier)
-        // sauf si on a déjà ajouté un saut de ligne manuel
-        const brElements = element.querySelectorAll('br');
-        const hasTrailingBr = brElements.length > 0 && element.lastChild && element.lastChild.tagName === 'BR';
-        
-        if (index < lineElements.length - 1 && !hasTrailingBr) {
-            result.push({
-                text: '',
-                align: 'left',
-                isLineBreak: true
-            });
-        } else if (hasTrailingBr) {
+        // Ajouter un saut de ligne après chaque élément EXCEPTÉ le dernier
+        // UNIQUEMENT si ce n'est pas déjà un élément vide avec <br>
+        if (index < lineElements.length - 1) {
             result.push({
                 text: '',
                 align: 'left',
