@@ -528,8 +528,8 @@ async function mergePDFs() {
  */
 
 /**
- * Formate le texte dans l'éditeur (alignement)
- * @param {string} command - left, center ou right
+ * Formate le texte dans l'éditeur (alignement et gras)
+ * @param {string} command - left, center, right ou bold
  */
 function formatText(command) {
     switch (command) {
@@ -541,6 +541,9 @@ function formatText(command) {
             break;
         case 'right':
             document.execCommand('justifyRight', false, null);
+            break;
+        case 'bold':
+            document.execCommand('bold', false, null);
             break;
     }
     textEditor.focus();
@@ -595,12 +598,20 @@ function parseFormattedText() {
             align = element.getAttribute('align');
         }
 
+        // Détecter si le texte est en gras
+        let isBold = false;
+        const boldElements = element.querySelectorAll('b, strong');
+        if (boldElements.length > 0) {
+            isBold = true;
+        }
+
         // Extraire le texte brut (conserve les espaces)
         const rawText = element.textContent || element.innerText || '';
 
         result.push({
             text: rawText || ' ',  // Garder un espace pour les lignes vides
-            align: align
+            align: align,
+            isBold: isBold
         });
     });
 
@@ -656,6 +667,10 @@ function convertTextToPDF() {
         } else if (line.align === 'right') {
             xPosition = pageWidth - marginRight;
         }
+        
+        // Déterminer le style de police en fonction du gras
+        const fontStyle = line.isBold ? 'bold' : 'normal';
+        doc.setFont('helvetica', fontStyle);
         
         // Ajouter le texte avec l'alignement
         doc.text(splitLines, xPosition, yPosition, { align: line.align });
