@@ -781,9 +781,17 @@ function convertTextToPDF() {
         lines.push(currentLine);
     }
     
+    const lineHeightMm = 12 * 0.35;
+    
     // Traiter chaque ligne
     lines.forEach(line => {
         if (line.isLineBreak) {
+            yPosition += lineHeightMm * 1.5;
+            return;
+        }
+        
+        // Ignorer les lignes sans segments
+        if (!line.segments || line.segments.length === 0) {
             yPosition += lineHeightMm * 1.5;
             return;
         }
@@ -799,8 +807,6 @@ function convertTextToPDF() {
         } else if (line.align === 'right') {
             currentX = pageWidth - marginRight - totalWidth;
         }
-        
-        const lineHeightMm = 12 * 0.35;
         
         // Traiter chaque segment de la ligne
         line.segments.forEach(segment => {
