@@ -605,16 +605,6 @@ function parseFormattedText() {
         
         // Ajouter les segments
         result.push(...segments);
-        
-        // Ajouter un saut de ligne après chaque élément EXCEPTÉ le dernier
-        // ET UNIQUEMENT si ce n'est pas un élément vide avec <br> (déjà traité ci-dessus)
-        if (index < lineElements.length - 1 && !isEmpty) {
-            result.push({
-                text: '',
-                align: 'left',
-                isLineBreak: true
-            });
-        }
     });
 
     return result;
