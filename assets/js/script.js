@@ -528,8 +528,8 @@ async function mergePDFs() {
  */
 
 /**
- * Formate le texte dans l'éditeur (alignement, gras, souligné)
- * @param {string} command - left, center, right, bold ou underline
+ * Formate le texte dans l'éditeur (alignement, gras, souligné, taille)
+ * @param {string} command - left, center, right, bold, underline, small, medium ou large
  */
 function formatText(command) {
     switch (command) {
@@ -547,6 +547,15 @@ function formatText(command) {
             break;
         case 'underline':
             document.execCommand('underline', false, null);
+            break;
+        case 'small':
+            document.execCommand('fontSize', false, '2');
+            break;
+        case 'medium':
+            document.execCommand('fontSize', false, '4');
+            break;
+        case 'large':
+            document.execCommand('fontSize', false, '6');
             break;
     }
     textEditor.focus();
