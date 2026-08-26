@@ -25,16 +25,6 @@ let imagesData = [];
 /** @type {File[]} */
 let pdfFiles = [];
 
-// Variables pour le formatage de texte
-let currentTextAlign = 'left';
-let isTextBold = false;
-
-// Éléments DOM pour le formatage
-const alignLeftBtn = document.getElementById('alignLeftBtn');
-const alignCenterBtn = document.getElementById('alignCenterBtn');
-const alignRightBtn = document.getElementById('alignRightBtn');
-const boldBtn = document.getElementById('boldBtn');
-
 // ============================================================================
 // CONSTANTES
 // ============================================================================
@@ -52,7 +42,7 @@ const DPI = 72;
 // ============================================================================
 
 // Éléments pour le texte
-const textInput = document.getElementById('textInput');
+const textEditor = document.getElementById('textEditor');
 const textDownloadBtn = document.getElementById('textDownloadBtn');
 const textSettingsBtn = document.getElementById('textSettingsBtn');
 
@@ -530,51 +520,101 @@ async function mergePDFs() {
 }
 
 // ============================================================================
-// FONCTIONS DE FORMATAGE DE TEXTE
-// ============================================================================
-
-/**
- * Définit l'alignement du texte
- * @param {string} align - L'alignement ('left', 'center', 'right')
- */
-function setTextAlign(align) {
-    currentTextAlign = align;
-    
-    // Mettre à jour les boutons actifs
-    alignLeftBtn.classList.remove('active');
-    alignCenterBtn.classList.remove('active');
-    alignRightBtn.classList.remove('active');
-    
-    if (align === 'left') alignLeftBtn.classList.add('active');
-    if (align === 'center') alignCenterBtn.classList.add('active');
-    if (align === 'right') alignRightBtn.classList.add('active');
-}
-
-/**
- * Active/désactive le gras
- */
-function toggleBold() {
-    isTextBold = !isTextBold;
-    boldBtn.classList.toggle('active', isTextBold);
-}
-
-// ============================================================================
 // CONVERSION TEXTE → PDF
 // ============================================================================
 
 /**
  * Met à jour l'état du bouton de téléchargement de texte
  */
-function updateTextButtonState() {
-    textDownloadBtn.disabled = textInput.value.trim() === '';
+
+/**
+ * Formate le texte dans l'éditeur (alignement)
+ * @param {string} command - left, center ou right
+ */
+function formatText(command) {
+    switch (command) {
+        case 'left':
+            document.execCommand('justifyLeft', false, null);
+            break;
+        case 'center':
+            document.execCommand('justifyCenter', false, null);
+            break;
+        case 'right':
+            document.execCommand('justifyRight', false, null);
+            break;
+    }
+    textEditor.focus();
+    updateTextButtonState();
 }
 
 /**
- * Convertit le texte en PDF
+ * Récupère le texte avec son alignement pour jsPDF
+ * @returns {Array} Tableau d'objets avec text et align
+ */
+function parseFormattedText() {
+    const editor = textEditor;
+    const result = [];
+    
+    // Récupérer tous les éléments de ligne (div, p) + les br
+    const lineElements = editor.querySelectorAll('div, p');
+    
+    // Si aucun élément trouvé, utiliser le texte brut
+    if (lineElements.length === 0) {
+        const text = editor.textContent;
+        if (text && text.trim()) {
+            result.push({
+                text: text,  // Conserver les espaces
+                align: 'left'
+            });
+        }
+        return result;
+    }
+
+    // Traiter chaque élément
+    lineElements.forEach(element => {
+        const hasBr = element.querySelector('br') !== null;
+        const trimmedText = element.textContent.trim();
+        const isEmpty = trimmedText === '' && hasBr;
+        
+        // Si c'est un élément vide avec un <br>, c'est un saut de ligne
+        if (isEmpty) {
+            result.push({
+                text: '',
+                align: 'left',
+                isLineBreak: true
+            });
+            return;
+        }
+        
+        // Si c'est un élément vide sans <br>, on l'ignore
+        if (trimmedText === '' && !hasBr) return;
+        
+        // Détecter l'alignement
+        let align = 'left';
+        if (element.hasAttribute('align')) {
+            align = element.getAttribute('align');
+        }
+
+        // Extraire le texte brut (conserve les espaces)
+        const rawText = element.textContent || element.innerText || '';
+
+        result.push({
+            text: rawText || ' ',  // Garder un espace pour les lignes vides
+            align: align
+        });
+    });
+
+    return result;
+}function updateTextButtonState() {
+    textDownloadBtn.disabled = textEditor.textContent.trim() === '';
+}
+
+/**
+ * Convertit le texte en PDF avec formatage
  */
 function convertTextToPDF() {
-    const text = textInput.value.trim();
-    if (!text) return;
+    const formattedText = parseFormattedText();
+    if (formattedText.length === 0) return;
 
     // Récupérer les marges
     const marginTop = parseFloat(textMarginTop.value);
@@ -589,19 +629,61 @@ function convertTextToPDF() {
         format: 'a4'
     });
 
-    // Calculer la largeur maximale pour le texte
-    const maxWidth = doc.internal.pageSize.getWidth() - marginLeft - marginRight;
-    
-    // Découper le texte en lignes qui tiennent dans la largeur
-    const lines = doc.splitTextToSize(text, maxWidth);
-    
-    // Déterminer le style de police
-    const fontStyle = isTextBold ? 'bold' : 'normal';
-    
-    // Ajouter le texte au PDF avec l'alignement et le style sélectionnés
-    doc.text(lines, marginLeft, marginTop, { 
-        align: currentTextAlign,
-        fontStyle: fontStyle
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const maxWidth = pageWidth - marginLeft - marginRight;
+    let yPosition = marginTop;
+
+    // Configurer la police par défaut
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+
+    formattedText.forEach(line => {
+        // Toujours en normal
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        
+        const currentFontSizePt = 12;
+
+        // Découper le texte si trop long
+        const splitLines = doc.splitTextToSize(line.text, maxWidth);
+        
+        // Calculer la position X en fonction de l'alignement
+        let xPosition = marginLeft;
+        if (line.align === 'center') {
+            xPosition = pageWidth / 2;
+        } else if (line.align === 'right') {
+            xPosition = pageWidth - marginRight;
+        }
+        
+        // Ajouter le texte avec l'alignement
+        doc.text(splitLines, xPosition, yPosition, { align: line.align });
+
+
+
+        // Mettre à jour la position Y - basée sur la taille de police actuelle
+        const lineHeightMm = currentFontSizePt * 0.35;
+        
+        // Si c'est un saut de ligne explicite, ajouter un espace complet
+        if (line.isLineBreak) {
+            yPosition += lineHeightMm * 1.5; // Espace pour un saut de ligne
+        } else if (line.text === ' ' || line.text === '') {
+            yPosition += lineHeightMm * 1.5; // Espace plus grand pour les sauts de ligne
+        } else {
+            yPosition += lineHeightMm * splitLines.length + 1;
+        }
+
+        // Réinitialiser pour la prochaine ligne
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+
+        // Passer à la page suivante si nécessaire
+        if (yPosition > doc.internal.pageSize.getHeight() - marginBottom) {
+            doc.addPage();
+            yPosition = marginTop;
+        }
     });
 
     doc.save('texte-converti.pdf');
