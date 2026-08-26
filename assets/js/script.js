@@ -612,9 +612,10 @@ function parseFormattedText() {
  * Extrait les segments de texte avec leur formatage
  * @param {NodeList} nodes - Les nœuds à traiter
  * @param {string} defaultAlign - L'alignement par défaut
+ * @param {boolean} hasFormatting - Si vrai, on est déjà dans un élément formaté
  * @returns {Array} Tableau de segments avec text, align, isBold, isUnderline
  */
-function extractTextSegments(nodes, defaultAlign) {
+function extractTextSegments(nodes, defaultAlign, hasFormatting = false) {
     const segments = [];
     
     nodes.forEach(node => {
@@ -626,12 +627,16 @@ function extractTextSegments(nodes, defaultAlign) {
         if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent;
             if (text.trim()) {
-                segments.push({
-                    text: text,
-                    align: defaultAlign,
-                    isBold: false,
-                    isUnderline: false
-                });
+                // Ne pas ajouter de segment si on est dans un élément formaté
+                // (le texte sera inclus dans le segment de l'élément parent)
+                if (!hasFormatting) {
+                    segments.push({
+                        text: text,
+                        align: defaultAlign,
+                        isBold: false,
+                        isUnderline: false
+                    });
+                }
             }
             return;
         }
@@ -639,24 +644,32 @@ function extractTextSegments(nodes, defaultAlign) {
         // Si c'est un élément (balise)
         if (node.nodeType === Node.ELEMENT_NODE) {
             // Détecter le formatage de cet élément
-            const isBold = isElementBold(node);
-            const isUnderline = isElementUnderlined(node);
+            const isBold = isElementBold(node) || hasFormatting;
+            const isUnderline = isElementUnderlined(node) || hasFormatting;
+            const currentHasFormatting = isBold || isUnderline;
             
-            // Extraire le texte de cet élément
-            const text = node.textContent;
-            if (text.trim()) {
-                segments.push({
-                    text: text,
-                    align: defaultAlign,
-                    isBold: isBold,
-                    isUnderline: isUnderline
-                });
-            }
-            
-            // Traiter les enfants récursivement (pour les spans imbriqués)
-            if (node.childNodes.length > 0) {
-                const childSegments = extractTextSegments(node.childNodes, defaultAlign);
-                segments.push(...childSegments);
+            // Si cet élément a un formatage, extraire son texte directement
+            if (currentHasFormatting) {
+                const text = node.textContent;
+                if (text.trim()) {
+                    segments.push({
+                        text: text,
+                        align: defaultAlign,
+                        isBold: isBold,
+                        isUnderline: isUnderline
+                    });
+                }
+                // Traiter les enfants avec hasFormatting=true pour éviter les doublons
+                if (node.childNodes.length > 0) {
+                    const childSegments = extractTextSegments(node.childNodes, defaultAlign, true);
+                    segments.push(...childSegments);
+                }
+            } else {
+                // Cet élément n'a pas de formatage, traiter normalement
+                if (node.childNodes.length > 0) {
+                    const childSegments = extractTextSegments(node.childNodes, defaultAlign, hasFormatting);
+                    segments.push(...childSegments);
+                }
             }
         }
     });
