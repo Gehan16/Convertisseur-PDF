@@ -748,69 +748,89 @@ function convertTextToPDF() {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
 
-    formattedText.forEach(line => {
-        // Toujours en normal
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        
-        const currentFontSizePt = 12;
-
-        // Découper le texte si trop long
-        const splitLines = doc.splitTextToSize(line.text, maxWidth);
-        
-        // Calculer la position X en fonction de l'alignement
-        let xPosition = marginLeft;
-        if (line.align === 'center') {
-            xPosition = pageWidth / 2;
-        } else if (line.align === 'right') {
-            xPosition = pageWidth - marginRight;
+    // Regrouper les segments par ligne (même alignement)
+    const lines = [];
+    let currentLine = null;
+    
+    formattedText.forEach(segment => {
+        // Si c'est un saut de ligne, finaliser la ligne courante
+        if (segment.isLineBreak) {
+            if (currentLine) {
+                lines.push(currentLine);
+                currentLine = null;
+            }
+            lines.push({ segments: [], align: 'left', isLineBreak: true });
+            return;
         }
         
-        // Déterminer le style de police en fonction du gras
-        const fontStyle = line.isBold ? 'bold' : 'normal';
-        doc.setFont('helvetica', fontStyle);
+        // Si on change d'alignement, finaliser la ligne courante
+        if (currentLine && currentLine.align !== segment.align) {
+            lines.push(currentLine);
+            currentLine = null;
+        }
         
-        // Appliquer le soulignement si nécessaire
-        if (line.isUnderline) {
+        // Créer ou ajouter à la ligne courante
+        if (!currentLine) {
+            currentLine = { segments: [], align: segment.align };
+        }
+        currentLine.segments.push(segment);
+    });
+    
+    // Ajouter la dernière ligne si elle existe
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+    
+    // Traiter chaque ligne
+    lines.forEach(line => {
+        if (line.isLineBreak) {
+            yPosition += lineHeightMm * 1.5;
+            return;
+        }
+        
+        // Calculer la largeur totale de la ligne pour le positionnement
+        const lineText = line.segments.map(s => s.text).join('');
+        const totalWidth = doc.getTextWidth(lineText);
+        
+        // Calculer la position de départ en fonction de l'alignement
+        let currentX = marginLeft;
+        if (line.align === 'center') {
+            currentX = pageWidth / 2 - totalWidth / 2;
+        } else if (line.align === 'right') {
+            currentX = pageWidth - marginRight - totalWidth;
+        }
+        
+        const lineHeightMm = 12 * 0.35;
+        
+        // Traiter chaque segment de la ligne
+        line.segments.forEach(segment => {
+            // Appliquer le style du segment
+            const fontStyle = segment.isBold ? 'bold' : 'normal';
+            doc.setFont('helvetica', fontStyle);
+            doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
-            // Dessiner une ligne sous le texte
-            const textWidth = doc.getTextWidth(splitLines[0] || line.text);
-            const lineY = yPosition + 1; // Position de la ligne de soulignement
             
-            // Calculer la position de départ de la ligne en fonction de l'alignement
-            let underlineStartX = xPosition;
-            if (line.align === 'center') {
-                underlineStartX = xPosition - textWidth / 2;
-            } else if (line.align === 'right') {
-                underlineStartX = xPosition - textWidth;
+            // Découper le texte si trop long
+            const splitLines = doc.splitTextToSize(segment.text, maxWidth);
+            
+            // Appliquer le soulignement si nécessaire
+            if (segment.isUnderline) {
+                const textWidth = doc.getTextWidth(splitLines[0] || segment.text);
+                const lineY = yPosition + 1;
+                doc.line(currentX, lineY, currentX + textWidth, lineY);
             }
             
-            doc.line(underlineStartX, lineY, underlineStartX + textWidth, lineY);
-        }
+            // Ajouter le texte
+            doc.text(splitLines, currentX, yPosition, { align: 'left' });
+            
+            // Mettre à jour currentX pour le prochain segment
+            const textWidth = doc.getTextWidth(splitLines[0] || segment.text);
+            currentX += textWidth;
+        });
         
-        // Ajouter le texte avec l'alignement
-        doc.text(splitLines, xPosition, yPosition, { align: line.align });
-
-
-
-        // Mettre à jour la position Y - basée sur la taille de police actuelle
-        const lineHeightMm = currentFontSizePt * 0.35;
+        // Mettre à jour la position Y
+        yPosition += lineHeightMm * 1.5;
         
-        // Si c'est un saut de ligne explicite, ajouter un espace complet
-        if (line.isLineBreak) {
-            yPosition += lineHeightMm * 1.5; // Espace pour un saut de ligne
-        } else if (line.text === ' ' || line.text === '') {
-            yPosition += lineHeightMm * 1.5; // Espace plus grand pour les sauts de ligne
-        } else {
-            yPosition += lineHeightMm * splitLines.length + 1;
-        }
-
-        // Réinitialiser pour la prochaine ligne
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-
         // Passer à la page suivante si nécessaire
         if (yPosition > doc.internal.pageSize.getHeight() - marginBottom) {
             doc.addPage();
