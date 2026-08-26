@@ -568,9 +568,40 @@ function parseFormattedText() {
     if (lineElements.length === 0) {
         const text = editor.textContent;
         if (text && text.trim()) {
+            // Détecter le gras et le souligné dans le texte brut
+            let isBold = false;
+            let isUnderline = false;
+            
+            // Vérifier les balises b, strong, u
+            const boldElements = editor.querySelectorAll('b, strong');
+            if (boldElements.length > 0) isBold = true;
+            else {
+                const boldSpans = editor.querySelectorAll('span[style*="font-weight"]');
+                boldSpans.forEach(span => {
+                    const style = span.getAttribute('style') || '';
+                    if (style.includes('bold') || style.includes('700')) {
+                        isBold = true;
+                    }
+                });
+            }
+            
+            const underlineElements = editor.querySelectorAll('u');
+            if (underlineElements.length > 0) isUnderline = true;
+            else {
+                const underlineSpans = editor.querySelectorAll('span[style*="text-decoration"]');
+                underlineSpans.forEach(span => {
+                    const style = span.getAttribute('style') || '';
+                    if (style.includes('underline')) {
+                        isUnderline = true;
+                    }
+                });
+            }
+            
             result.push({
                 text: text,  // Conserver les espaces
-                align: 'left'
+                align: 'left',
+                isBold: isBold,
+                isUnderline: isUnderline
             });
         }
         return result;
