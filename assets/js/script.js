@@ -689,7 +689,16 @@ function convertTextToPDF() {
             // Dessiner une ligne sous le texte
             const textWidth = doc.getTextWidth(splitLines[0] || line.text);
             const lineY = yPosition + 1; // Position de la ligne de soulignement
-            doc.line(xPosition, lineY, xPosition + textWidth, lineY);
+            
+            // Calculer la position de départ de la ligne en fonction de l'alignement
+            let underlineStartX = xPosition;
+            if (line.align === 'center') {
+                underlineStartX = xPosition - textWidth / 2;
+            } else if (line.align === 'right') {
+                underlineStartX = xPosition - textWidth;
+            }
+            
+            doc.line(underlineStartX, lineY, underlineStartX + textWidth, lineY);
         }
         
         // Ajouter le texte avec l'alignement
