@@ -564,6 +564,7 @@ async function mergePDFs() {
 
 /**
  * Convertit le texte en PDF avec formatage (utilisant Quill)
+ * Gère le formatage par segment de texte (gras, italique, souligné)
  */
 function convertTextToPDF() {
     const htmlContent = quill.root.innerHTML;
@@ -597,69 +598,80 @@ function convertTextToPDF() {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
 
-    // Traiter chaque paragraphes (Quill utilise des p)
+    // Traiter chaque paragraphe (Quill utilise des p)
     const paragraphs = tempDiv.querySelectorAll('p');
     
-    paragraphs.forEach((p, index) => {
-        // Détecter l'alignement
+    paragraphs.forEach((p, pIndex) => {
+        // Détecter l'alignement du paragraphe
         let align = 'left';
-        const alignClass = p.classList.contains('ql-align-center') ? 'center' : 
-                          p.classList.contains('ql-align-right') ? 'right' : 
-                          p.classList.contains('ql-align-justify') ? 'justify' : 'left';
-        
         if (p.style.textAlign) {
             align = p.style.textAlign;
-        } else if (alignClass) {
-            align = alignClass;
+        } else if (p.classList.contains('ql-align-center')) {
+            align = 'center';
+        } else if (p.classList.contains('ql-align-right')) {
+            align = 'right';
+        } else if (p.classList.contains('ql-align-justify')) {
+            align = 'justify';
         }
 
-        // Traiter le contenu du paragraphe
-        const textContent = p.textContent;
-        if (textContent.trim()) {
-            // Vérifier les formats (gras, italique, souligné)
-            let isBold = p.querySelector('strong, b') !== null;
-            let isItalic = p.querySelector('em, i') !== null;
-            let isUnderline = p.querySelector('u') !== null;
-
-            // Déterminer le style de police (helvetica supporte: normal, bold, italic, bolditalic)
-            let fontStyle = 'normal';
-            if (isBold && isItalic) {
-                fontStyle = 'bolditalic';
-            } else if (isBold) {
-                fontStyle = 'bold';
-            } else if (isItalic) {
-                fontStyle = 'italic';
-            }
-
-            // Appliquer le style
-            doc.setFont('helvetica', fontStyle);
-            doc.setFontSize(12);
-
-            // Calculer la position X en fonction de l'alignement
-            let currentX = marginLeft;
-            const textWidth = doc.getTextWidth(textContent);
-            
-            if (align === 'center') {
-                currentX = pageWidth / 2 - textWidth / 2;
-            } else if (align === 'right') {
-                currentX = pageWidth - marginRight - textWidth;
-            }
-
-            // Appliquer le soulignement si nécessaire
-            if (isUnderline) {
-                const lineY = yPosition + 1;
-                doc.line(currentX, lineY, currentX + textWidth, lineY);
-            }
-
-            // Ajouter le texte
-            const splitLines = doc.splitTextToSize(textContent, maxWidth);
-            doc.text(splitLines, currentX, yPosition, { align: align });
-
-            // Mettre à jour la position Y
-            yPosition += lineHeightMm * splitLines.length;
-        } else {
+        // Extraire les segments de texte avec leur formatage
+        const segments = extractQuillSegments(p);
+        
+        if (segments.length === 0) {
             // Paragraphe vide = saut de ligne
             yPosition += lineHeightMm;
+        } else {
+            // Calculer la largeur totale de tous les segments pour le positionnement
+            const fullText = segments.map(s => s.text).join('');
+            const totalWidth = doc.getTextWidth(fullText);
+            
+            // Calculer la position X de départ en fonction de l'alignement
+            let currentX = marginLeft;
+            if (align === 'center') {
+                currentX = pageWidth / 2 - totalWidth / 2;
+            } else if (align === 'right') {
+                currentX = pageWidth - marginRight - totalWidth;
+            }
+
+            // Traiter chaque segment avec son propre formatage
+            segments.forEach(segment => {
+                // Appliquer le style du segment
+                let fontStyle = 'normal';
+                if (segment.isBold && segment.isItalic) {
+                    fontStyle = 'bolditalic';
+                } else if (segment.isBold) {
+                    fontStyle = 'bold';
+                } else if (segment.isItalic) {
+                    fontStyle = 'italic';
+                }
+                
+                doc.setFont('helvetica', fontStyle);
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+
+                // Calculer la largeur du segment
+                const segmentWidth = doc.getTextWidth(segment.text);
+                
+                // Appliquer le soulignement si nécessaire
+                if (segment.isUnderline) {
+                    const lineY = yPosition + 1;
+                    doc.line(currentX, lineY, currentX + segmentWidth, lineY);
+                }
+
+                // Ajouter le texte du segment
+                doc.text(segment.text, currentX, yPosition, { align: 'left' });
+                
+                // Mettre à jour currentX pour le prochain segment
+                currentX += segmentWidth;
+            });
+
+            // Mettre à jour la position Y
+            yPosition += lineHeightMm;
+        }
+
+        // Ajouter un saut de ligne après chaque paragraphe (sauf le dernier)
+        if (pIndex < paragraphs.length - 1) {
+            yPosition += lineHeightMm * 0.5; // Petit espace entre paragraphes
         }
 
         // Passer à la page suivante si nécessaire
@@ -670,4 +682,54 @@ function convertTextToPDF() {
     });
 
     doc.save('texte-converti.pdf');
+}
+
+/**
+ * Extrait les segments de texte avec leur formatage depuis un élément Quill
+ * @param {HTMLElement} element - L'élément à analyser
+ * @returns {Array} Tableau d'objets {text, isBold, isItalic, isUnderline}
+ */
+function extractQuillSegments(element) {
+    const segments = [];
+    
+    // Fonction récursive pour parcourir les nœuds
+    function processNode(node, currentFormatting) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent;
+            if (text.trim()) {
+                segments.push({
+                    text: text,
+                    isBold: currentFormatting.isBold,
+                    isItalic: currentFormatting.isItalic,
+                    isUnderline: currentFormatting.isUnderline
+                });
+            }
+            return;
+        }
+        
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            // Mettre à jour le formatage en fonction de la balise
+            const newFormatting = {
+                isBold: currentFormatting.isBold || node.tagName === 'STRONG' || node.tagName === 'B',
+                isItalic: currentFormatting.isItalic || node.tagName === 'EM' || node.tagName === 'I',
+                isUnderline: currentFormatting.isUnderline || node.tagName === 'U'
+            };
+            
+            // Traiter les enfants avec le nouveau formatage
+            for (let i = 0; i < node.childNodes.length; i++) {
+                processNode(node.childNodes[i], newFormatting);
+            }
+        }
+    }
+    
+    // Démarrer le traitement avec un formatage vide
+    for (let i = 0; i < element.childNodes.length; i++) {
+        processNode(element.childNodes[i], {
+            isBold: false,
+            isItalic: false,
+            isUnderline: false
+        });
+    }
+    
+    return segments;
 }
