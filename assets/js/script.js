@@ -602,8 +602,17 @@ function convertTextToPDF() {
             let isItalic = p.querySelector('em, i') !== null;
             let isUnderline = p.querySelector('u') !== null;
 
+            // Déterminer le style de police (helvetica supporte: normal, bold, italic, bolditalic)
+            let fontStyle = 'normal';
+            if (isBold && isItalic) {
+                fontStyle = 'bolditalic';
+            } else if (isBold) {
+                fontStyle = 'bold';
+            } else if (isItalic) {
+                fontStyle = 'italic';
+            }
+
             // Appliquer le style
-            const fontStyle = isBold ? 'bold' : 'normal';
             doc.setFont('helvetica', fontStyle);
             doc.setFontSize(12);
 
