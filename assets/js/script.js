@@ -591,8 +591,15 @@ function parseFormattedText() {
             return;
         }
         
-        // Si c'est un élément vide sans <br>, on l'ignore
-        if (trimmedText === '' && !hasBr) return;
+        // Si c'est un élément vide sans <br>, c'est aussi un saut de ligne
+        if (trimmedText === '' && !hasBr) {
+            result.push({
+                text: '',
+                align: 'left',
+                isLineBreak: true
+            });
+            return;
+        }
         
         // Détecter l'alignement de la ligne
         let align = 'left';
@@ -605,6 +612,15 @@ function parseFormattedText() {
         
         // Ajouter les segments
         result.push(...segments);
+        
+        // Ajouter un saut de ligne après chaque élément sauf le dernier
+        if (index < lineElements.length - 1) {
+            result.push({
+                text: '',
+                align: 'left',
+                isLineBreak: true
+            });
+        }
     });
 
     return result;
