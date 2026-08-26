@@ -25,6 +25,16 @@ let imagesData = [];
 /** @type {File[]} */
 let pdfFiles = [];
 
+// Variables pour le formatage de texte
+let currentTextAlign = 'left';
+let isTextBold = false;
+
+// Éléments DOM pour le formatage
+const alignLeftBtn = document.getElementById('alignLeftBtn');
+const alignCenterBtn = document.getElementById('alignCenterBtn');
+const alignRightBtn = document.getElementById('alignRightBtn');
+const boldBtn = document.getElementById('boldBtn');
+
 // ============================================================================
 // CONSTANTES
 // ============================================================================
@@ -520,6 +530,35 @@ async function mergePDFs() {
 }
 
 // ============================================================================
+// FONCTIONS DE FORMATAGE DE TEXTE
+// ============================================================================
+
+/**
+ * Définit l'alignement du texte
+ * @param {string} align - L'alignement ('left', 'center', 'right')
+ */
+function setTextAlign(align) {
+    currentTextAlign = align;
+    
+    // Mettre à jour les boutons actifs
+    alignLeftBtn.classList.remove('active');
+    alignCenterBtn.classList.remove('active');
+    alignRightBtn.classList.remove('active');
+    
+    if (align === 'left') alignLeftBtn.classList.add('active');
+    if (align === 'center') alignCenterBtn.classList.add('active');
+    if (align === 'right') alignRightBtn.classList.add('active');
+}
+
+/**
+ * Active/désactive le gras
+ */
+function toggleBold() {
+    isTextBold = !isTextBold;
+    boldBtn.classList.toggle('active', isTextBold);
+}
+
+// ============================================================================
 // CONVERSION TEXTE → PDF
 // ============================================================================
 
@@ -556,8 +595,14 @@ function convertTextToPDF() {
     // Découper le texte en lignes qui tiennent dans la largeur
     const lines = doc.splitTextToSize(text, maxWidth);
     
-    // Ajouter le texte au PDF
-    doc.text(lines, marginLeft, marginTop, { align: 'left' });
+    // Déterminer le style de police
+    const fontStyle = isTextBold ? 'bold' : 'normal';
+    
+    // Ajouter le texte au PDF avec l'alignement et le style sélectionnés
+    doc.text(lines, marginLeft, marginTop, { 
+        align: currentTextAlign,
+        fontStyle: fontStyle
+    });
 
     doc.save('texte-converti.pdf');
 }
