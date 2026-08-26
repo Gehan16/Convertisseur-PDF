@@ -602,7 +602,22 @@ function parseFormattedText() {
         
         // Extraire les segments de texte avec leur formatage
         const segments = extractTextSegments(element.childNodes, align);
-        result.push(...segments);
+        
+        // Vérifier si cet élément contient un <br> à la fin (saut de ligne manuel)
+        const brElements = element.querySelectorAll('br');
+        const hasTrailingBr = brElements.length > 0;
+        
+        // Si le dernier enfant est un <br>, ajouter un saut de ligne après les segments
+        if (hasTrailingBr && element.lastChild && element.lastChild.tagName === 'BR') {
+            result.push(...segments);
+            result.push({
+                text: '',
+                align: 'left',
+                isLineBreak: true
+            });
+        } else {
+            result.push(...segments);
+        }
     });
 
     return result;
