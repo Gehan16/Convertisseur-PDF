@@ -30,23 +30,20 @@
             <div class="section">
                 <div style="margin-top: 50px;"></div>
                 <h2 class="section-title">Convertir du Texte en PDF</h2>
-                <textarea id="textInput" placeholder="Saisissez votre texte ici..." oninput="updateTextButtonState()"></textarea>
-
-                <!-- Barre d'outils de formatage -->
-                <div class="format-toolbar">
-                    <button id="alignLeftBtn" class="format-btn active" onclick="setTextAlign('left')" title="Aligner à gauche">
-                        <span class="format-icon">←</span>
+                <div class="text-formatting-toolbar">
+                    <button class="btn btn-small" onclick="formatText('left')" title="Aligner à gauche">
+                        ←
                     </button>
-                    <button id="alignCenterBtn" class="format-btn" onclick="setTextAlign('center')" title="Aligner au centre">
-                        <span class="format-icon">≡</span>
+                    <button class="btn btn-small" onclick="formatText('center')" title="Centrer">
+                        ↔
                     </button>
-                    <button id="alignRightBtn" class="format-btn" onclick="setTextAlign('right')" title="Aligner à droite">
-                        <span class="format-icon">→</span>
-                    </button>
-                    <button id="boldBtn" class="format-btn" onclick="toggleBold()" title="Gras">
-                        <span class="format-icon"><b>B</b></span>
+                    <button class="btn btn-small" onclick="formatText('right')" title="Aligner à droite">
+                        →
                     </button>
                 </div>
+                <div id="textEditor" contenteditable="true" class="text-editor" 
+                     placeholder="Saisissez votre texte ici..." 
+                     oninput="updateTextButtonState()"></div>
 
                 <!-- Contrôles de marges pour le texte (masqués par défaut) -->
                 <div class="margin-controls" id="textMargins" style="display: none;">
