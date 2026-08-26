@@ -46,6 +46,9 @@ const textEditor = document.getElementById('textEditor');
 const textDownloadBtn = document.getElementById('textDownloadBtn');
 const textSettingsBtn = document.getElementById('textSettingsBtn');
 
+// Initialiser Quill
+let quill;
+
 // Éléments pour les images
 const imageDropZone = document.getElementById('image-drop-zone');
 const imageFileInput = document.getElementById('imageFileInput');
@@ -90,6 +93,23 @@ const pdfMarginRight = document.getElementById('pdfMarginRight');
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialiser Quill
+    quill = new Quill('#textEditor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ 'align': [] }]
+            ]
+        },
+        placeholder: 'Saisissez votre texte ici...'
+    });
+    
+    // Mettre à jour l'état du bouton quand le contenu change
+    quill.on('text-change', function() {
+        textDownloadBtn.disabled = quill.getLength() <= 1; // 1 = juste le saut de ligne
+    });
+    
     // Configuration des zones de dépôt
     setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
     setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
@@ -524,225 +544,11 @@ async function mergePDFs() {
 // ============================================================================
 
 /**
- * Met à jour l'état du bouton de téléchargement de texte
- */
-
-/**
- * Formate le texte dans l'éditeur (alignement, gras, souligné)
- * @param {string} command - left, center, right, bold ou underline
- */
-function formatText(command) {
-    switch (command) {
-        case 'left':
-            document.execCommand('justifyLeft', false, null);
-            break;
-        case 'center':
-            document.execCommand('justifyCenter', false, null);
-            break;
-        case 'right':
-            document.execCommand('justifyRight', false, null);
-            break;
-        case 'bold':
-            document.execCommand('bold', false, null);
-            break;
-        case 'underline':
-            document.execCommand('underline', false, null);
-            break;
-    }
-    textEditor.focus();
-    updateTextButtonState();
-}
-
-/**
- * Récupère le texte avec son formatage pour jsPDF (par segments)
- * @returns {Array} Tableau d'objets avec text, align, isBold, isUnderline
- */
-function parseFormattedText() {
-    const editor = textEditor;
-    const result = [];
-    
-    // Récupérer tous les éléments de ligne (div, p) + les br
-    const lineElements = editor.querySelectorAll('div, p');
-    
-    // Si aucun élément trouvé, utiliser le texte brut
-    if (lineElements.length === 0) {
-        // Traiter le contenu de l'éditeur comme une seule ligne
-        const children = editor.childNodes;
-        if (children.length > 0) {
-            const segments = extractTextSegments(children, 'left');
-            result.push(...segments);
-        }
-        return result;
-    }
-
-    // Traiter chaque élément (ligne)
-    lineElements.forEach((element, index) => {
-        const hasBr = element.querySelector('br') !== null;
-        const trimmedText = element.textContent.trim();
-        const isEmpty = trimmedText === '' && hasBr;
-        
-        // Si c'est un élément vide avec un <br>, c'est un saut de ligne
-        if (isEmpty) {
-            result.push({
-                text: '',
-                align: 'left',
-                isLineBreak: true
-            });
-            return;
-        }
-        
-        // Si c'est un élément vide sans <br>, c'est aussi un saut de ligne
-        if (trimmedText === '' && !hasBr) {
-            result.push({
-                text: '',
-                align: 'left',
-                isLineBreak: true
-            });
-            return;
-        }
-        
-        // Détecter l'alignement de la ligne
-        let align = 'left';
-        if (element.hasAttribute('align')) {
-            align = element.getAttribute('align');
-        }
-        
-        // Extraire les segments de texte avec leur formatage
-        const segments = extractTextSegments(element.childNodes, align);
-        
-        // Ajouter les segments
-        result.push(...segments);
-        
-        // Ajouter un saut de ligne après chaque élément sauf le dernier
-        if (index < lineElements.length - 1) {
-            result.push({
-                text: '',
-                align: 'left',
-                isLineBreak: true
-            });
-        }
-    });
-
-    return result;
-}
-
-/**
- * Extrait les segments de texte avec leur formatage
- * @param {NodeList} nodes - Les nœuds à traiter
- * @param {string} defaultAlign - L'alignement par défaut
- * @param {boolean} hasFormatting - Si vrai, on est déjà dans un élément formaté
- * @returns {Array} Tableau de segments avec text, align, isBold, isUnderline
- */
-function extractTextSegments(nodes, defaultAlign, hasFormatting = false) {
-    const segments = [];
-    
-    nodes.forEach(node => {
-        // Ignorer les nœuds vides (textes vides, commentaires, etc.)
-        if (node.nodeType === Node.COMMENT_NODE) return;
-        if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) return;
-        
-        // Si c'est un nœud texte
-        if (node.nodeType === Node.TEXT_NODE) {
-            const text = node.textContent;
-            if (text.trim()) {
-                // Ne pas ajouter de segment si on est dans un élément formaté
-                // (le texte sera inclus dans le segment de l'élément parent)
-                if (!hasFormatting) {
-                    segments.push({
-                        text: text,
-                        align: defaultAlign,
-                        isBold: false,
-                        isUnderline: false
-                    });
-                }
-            }
-            return;
-        }
-        
-        // Si c'est un élément (balise)
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            // Détecter le formatage de cet élément
-            const isBold = isElementBold(node) || hasFormatting;
-            const isUnderline = isElementUnderlined(node) || hasFormatting;
-            const currentHasFormatting = isBold || isUnderline;
-            
-            // Si cet élément a un formatage, extraire son texte directement
-            if (currentHasFormatting) {
-                const text = node.textContent;
-                if (text.trim()) {
-                    segments.push({
-                        text: text,
-                        align: defaultAlign,
-                        isBold: isBold,
-                        isUnderline: isUnderline
-                    });
-                }
-                // Traiter les enfants avec hasFormatting=true pour éviter les doublons
-                if (node.childNodes.length > 0) {
-                    const childSegments = extractTextSegments(node.childNodes, defaultAlign, true);
-                    segments.push(...childSegments);
-                }
-            } else {
-                // Cet élément n'a pas de formatage, traiter normalement
-                if (node.childNodes.length > 0) {
-                    const childSegments = extractTextSegments(node.childNodes, defaultAlign, hasFormatting);
-                    segments.push(...childSegments);
-                }
-            }
-        }
-    });
-    
-    return segments;
-}
-
-/**
- * Vérifie si un élément est en gras
- * @param {HTMLElement} element - L'élément à vérifier
- * @returns {boolean} True si l'élément est en gras
- */
-function isElementBold(element) {
-    // Balises b, strong
-    if (element.tagName === 'B' || element.tagName === 'STRONG') {
-        return true;
-    }
-    
-    // Spans avec font-weight: bold
-    const style = element.getAttribute('style') || '';
-    if (style.includes('bold') || style.includes('700')) {
-        return true;
-    }
-    
-    return false;
-}
-
-/**
- * Vérifie si un élément est souligné
- * @param {HTMLElement} element - L'élément à vérifier
- * @returns {boolean} True si l'élément est souligné
- */
-function isElementUnderlined(element) {
-    // Balise u
-    if (element.tagName === 'U') {
-        return true;
-    }
-    
-    // Spans avec text-decoration: underline
-    const style = element.getAttribute('style') || '';
-    if (style.includes('underline')) {
-        return true;
-    }
-    
-    return false;
-}function updateTextButtonState() {
-    textDownloadBtn.disabled = textEditor.textContent.trim() === '';
-}
-
-/**
- * Convertit le texte en PDF avec formatage
+ * Convertit le texte en PDF avec formatage (utilisant Quill)
  */
 function convertTextToPDF() {
-    const formattedText = parseFormattedText();
-    if (formattedText.length === 0) return;
+    const htmlContent = quill.root.innerHTML;
+    if (!htmlContent || htmlContent === '<p><br></p>') return;
 
     // Récupérer les marges
     const marginTop = parseFloat(textMarginTop.value);
@@ -766,95 +572,68 @@ function convertTextToPDF() {
     doc.setFontSize(12);
     doc.setTextColor(0, 0, 0);
 
-    // Regrouper les segments par ligne (même alignement)
-    const lines = [];
-    let currentLine = null;
+    const lineHeightMm = 7; // Hauteur de ligne en mm
+
+    // Créer un élément temporaire pour parser le HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+
+    // Traiter chaque paragraphes (Quill utilise des p)
+    const paragraphs = tempDiv.querySelectorAll('p');
     
-    formattedText.forEach(segment => {
-        // Si c'est un saut de ligne, finaliser la ligne courante
-        if (segment.isLineBreak) {
-            if (currentLine) {
-                lines.push(currentLine);
-                currentLine = null;
-            }
-            lines.push({ segments: [], align: 'left', isLineBreak: true });
-            return;
-        }
+    paragraphs.forEach((p, index) => {
+        // Détecter l'alignement
+        let align = 'left';
+        const alignClass = p.classList.contains('ql-align-center') ? 'center' : 
+                          p.classList.contains('ql-align-right') ? 'right' : 
+                          p.classList.contains('ql-align-justify') ? 'justify' : 'left';
         
-        // Si on change d'alignement, finaliser la ligne courante
-        if (currentLine && currentLine.align !== segment.align) {
-            lines.push(currentLine);
-            currentLine = null;
+        if (p.style.textAlign) {
+            align = p.style.textAlign;
+        } else if (alignClass) {
+            align = alignClass;
         }
-        
-        // Créer ou ajouter à la ligne courante
-        if (!currentLine) {
-            currentLine = { segments: [], align: segment.align };
-        }
-        currentLine.segments.push(segment);
-    });
-    
-    // Ajouter la dernière ligne si elle existe
-    if (currentLine) {
-        lines.push(currentLine);
-    }
-    
-    const lineHeightMm = 12 * 0.35;
-    
-    // Traiter chaque ligne
-    lines.forEach(line => {
-        if (line.isLineBreak) {
-            yPosition += lineHeightMm * 1.5;
-            return;
-        }
-        
-        // Ignorer les lignes sans segments
-        if (!line.segments || line.segments.length === 0) {
-            yPosition += lineHeightMm * 1.5;
-            return;
-        }
-        
-        // Calculer la largeur totale de la ligne pour le positionnement
-        const lineText = line.segments.map(s => s.text).join('');
-        const totalWidth = doc.getTextWidth(lineText);
-        
-        // Calculer la position de départ en fonction de l'alignement
-        let currentX = marginLeft;
-        if (line.align === 'center') {
-            currentX = pageWidth / 2 - totalWidth / 2;
-        } else if (line.align === 'right') {
-            currentX = pageWidth - marginRight - totalWidth;
-        }
-        
-        // Traiter chaque segment de la ligne
-        line.segments.forEach(segment => {
-            // Appliquer le style du segment
-            const fontStyle = segment.isBold ? 'bold' : 'normal';
+
+        // Traiter le contenu du paragraphe
+        const textContent = p.textContent;
+        if (textContent.trim()) {
+            // Vérifier les formats (gras, italique, souligné)
+            let isBold = p.querySelector('strong, b') !== null;
+            let isItalic = p.querySelector('em, i') !== null;
+            let isUnderline = p.querySelector('u') !== null;
+
+            // Appliquer le style
+            const fontStyle = isBold ? 'bold' : 'normal';
             doc.setFont('helvetica', fontStyle);
             doc.setFontSize(12);
-            doc.setTextColor(0, 0, 0);
+
+            // Calculer la position X en fonction de l'alignement
+            let currentX = marginLeft;
+            const textWidth = doc.getTextWidth(textContent);
             
-            // Découper le texte si trop long
-            const splitLines = doc.splitTextToSize(segment.text, maxWidth);
-            
+            if (align === 'center') {
+                currentX = pageWidth / 2 - textWidth / 2;
+            } else if (align === 'right') {
+                currentX = pageWidth - marginRight - textWidth;
+            }
+
             // Appliquer le soulignement si nécessaire
-            if (segment.isUnderline) {
-                const textWidth = doc.getTextWidth(splitLines[0] || segment.text);
+            if (isUnderline) {
                 const lineY = yPosition + 1;
                 doc.line(currentX, lineY, currentX + textWidth, lineY);
             }
-            
+
             // Ajouter le texte
-            doc.text(splitLines, currentX, yPosition, { align: 'left' });
-            
-            // Mettre à jour currentX pour le prochain segment
-            const textWidth = doc.getTextWidth(splitLines[0] || segment.text);
-            currentX += textWidth;
-        });
-        
-        // Mettre à jour la position Y
-        yPosition += lineHeightMm * 1.5;
-        
+            const splitLines = doc.splitTextToSize(textContent, maxWidth);
+            doc.text(splitLines, currentX, yPosition, { align: align });
+
+            // Mettre à jour la position Y
+            yPosition += lineHeightMm * splitLines.length;
+        } else {
+            // Paragraphe vide = saut de ligne
+            yPosition += lineHeightMm;
+        }
+
         // Passer à la page suivante si nécessaire
         if (yPosition > doc.internal.pageSize.getHeight() - marginBottom) {
             doc.addPage();

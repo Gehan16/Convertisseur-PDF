@@ -459,3 +459,32 @@ textarea {
         width: 100%;
     }
 }
+
+
+/* Styles pour Quill */
+.quill-editor {
+    width: 100%;
+    min-height: 150px;
+    margin-bottom: 15px;
+    background-color: white;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+}
+
+.quill-editor .ql-container {
+    min-height: 150px;
+    border: none;
+}
+
+.quill-editor .ql-toolbar {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom: 1px solid #ced4da;
+}
+
+.quill-editor .ql-container {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    font-size: 16px;
+    line-height: 1.5;
+}

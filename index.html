@@ -14,6 +14,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- pdf.js pour la fusion -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
+    <!-- Quill -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <!-- CSS local -->
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
@@ -30,26 +32,8 @@
             <div class="section">
                 <div style="margin-top: 50px;"></div>
                 <h2 class="section-title">Convertir du Texte en PDF</h2>
-                <div class="text-formatting-toolbar">
-                    <button class="btn btn-small" onclick="formatText('left')" title="Aligner à gauche">
-                        ←
-                    </button>
-                    <button class="btn btn-small" onclick="formatText('center')" title="Centrer">
-                        ↔
-                    </button>
-                    <button class="btn btn-small" onclick="formatText('right')" title="Aligner à droite">
-                        →
-                    </button>
-                    <button class="btn btn-small" onclick="formatText('bold')" title="Gras">
-                        <b>B</b>
-                    </button>
-                    <button class="btn btn-small" onclick="formatText('underline')" title="Souligner">
-                        <u>U</u>
-                    </button>
-                </div>
-                <div id="textEditor" contenteditable="true" class="text-editor" 
-                     placeholder="Saisissez votre texte ici..." 
-                     oninput="updateTextButtonState()"></div>
+                <!-- Éditeur Quill -->
+                <div id="textEditor" class="quill-editor"></div>
 
                 <!-- Contrôles de marges pour le texte (masqués par défaut) -->
                 <div class="margin-controls" id="textMargins" style="display: none;">
@@ -183,6 +167,8 @@
     </div>
 </div>
 
+    <!-- Quill JS -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <!-- Scripts -->
     <script src="assets/js/script.js"></script>
 </body>
