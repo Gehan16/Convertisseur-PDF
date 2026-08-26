@@ -105,6 +105,25 @@ document.addEventListener('DOMContentLoaded', () => {
         placeholder: 'Saisissez votre texte ici...'
     });
     
+    // Gérer le collage pour forcer le texte brut
+    const editorElement = document.querySelector('#textEditor .ql-editor');
+    editorElement.addEventListener('paste', function(e) {
+        // Empêcher le collage par défaut
+        e.preventDefault();
+        
+        // Récupérer le texte brut du presse-papiers
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        
+        // Insérer le texte brut à la position actuelle
+        const selection = quill.getSelection();
+        if (selection) {
+            quill.insertText(selection.index, text, Quill.sources.USER);
+        } else {
+            // Si aucune sélection, ajouter à la fin
+            quill.insertText(quill.getLength(), text, Quill.sources.USER);
+        }
+    });
+    
     // Mettre à jour l'état du bouton quand le contenu change
     quill.on('text-change', function() {
         textDownloadBtn.disabled = quill.getLength() <= 1; // 1 = juste le saut de ligne
