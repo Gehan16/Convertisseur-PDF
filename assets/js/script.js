@@ -622,103 +622,39 @@ function convertTextToPDF() {
             // Paragraphe vide = saut de ligne
             yPosition += lineHeightMm;
         } else {
-            // Calculer la position X de départ en fonction de l'alignement
-            let currentX = marginLeft;
+            // Position X de départ pour le paragraphe
+            let paragrapheStartX = marginLeft;
             if (align === 'center') {
-                // Pour l'alignement centré, on ne peut pas calculer la position de départ
-                // car on ne connaît pas encore la largeur totale des segments sur la ligne
-                // On va donc traiter les segments avec align: 'left' et centrer chaque ligne
-                currentX = pageWidth / 2;
+                paragrapheStartX = pageWidth / 2;
             } else if (align === 'right') {
-                currentX = pageWidth - marginRight;
-            } else {
-                currentX = marginLeft;
+                paragrapheStartX = pageWidth - marginRight;
             }
 
             // Traiter les segments avec retour à la ligne automatique
             let lineSegments = [];
             let lineWidth = 0;
             
-            segments.forEach(segment => {
-                // Appliquer le style du segment
-                let fontStyle = 'normal';
-                if (segment.isBold && segment.isItalic) {
-                    fontStyle = 'bolditalic';
-                } else if (segment.isBold) {
-                    fontStyle = 'bold';
-                } else if (segment.isItalic) {
-                    fontStyle = 'italic';
+            for (let segIndex = 0; segIndex < segments.length; segIndex++) {
+                const segment = segments[segIndex];
+                const segmentWidth = doc.getTextWidth(segment.text);
+                
+                // Vérifier si le segment tient sur la ligne actuelle
+                if (lineWidth + segmentWidth > maxWidth && lineSegments.length > 0) {
+                    // Le segment ne tient pas, rendre la ligne actuelle
+                    renderLine(doc, lineSegments, paragrapheStartX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
+                    yPosition += lineHeightMm;
+                    lineSegments = [];
+                    lineWidth = 0;
                 }
                 
-                doc.setFont('helvetica', fontStyle);
-                doc.setFontSize(12);
-
-                // Découper le texte du segment en lignes qui tiennent dans maxWidth
-                const splitTexts = doc.splitTextToSize(segment.text, maxWidth - lineWidth);
-                
-                if (splitTexts.length > 1) {
-                    // Le texte dépasse, il faut passer à la ligne
-                    // D'abord, ajouter les segments accumulés
-                    if (lineSegments.length > 0) {
-                        renderLine(doc, lineSegments, currentX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
-                        yPosition += lineHeightMm;
-                        lineSegments = [];
-                        lineWidth = 0;
-                        
-                        // Réinitialiser currentX pour la nouvelle ligne
-                        if (align === 'center') {
-                            currentX = pageWidth / 2;
-                        } else if (align === 'right') {
-                            currentX = pageWidth - marginRight;
-                        } else {
-                            currentX = marginLeft;
-                        }
-                    }
-                    
-                    // Ajouter la première partie du texte coupé
-                    lineSegments.push({
-                        text: splitTexts[0],
-                        isBold: segment.isBold,
-                        isItalic: segment.isItalic,
-                        isUnderline: segment.isUnderline
-                    });
-                    lineWidth += doc.getTextWidth(splitTexts[0]);
-                    
-                    // Ajouter les parties restantes (chacune sur une nouvelle ligne)
-                    for (let i = 1; i < splitTexts.length; i++) {
-                        if (lineSegments.length > 0) {
-                            renderLine(doc, lineSegments, currentX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
-                            yPosition += lineHeightMm;
-                            lineSegments = [];
-                            lineWidth = 0;
-                            
-                            if (align === 'center') {
-                                currentX = pageWidth / 2;
-                            } else if (align === 'right') {
-                                currentX = pageWidth - marginRight;
-                            } else {
-                                currentX = marginLeft;
-                            }
-                        }
-                        
-                        lineSegments.push({
-                            text: splitTexts[i],
-                            isBold: segment.isBold,
-                            isItalic: segment.isItalic,
-                            isUnderline: segment.isUnderline
-                        });
-                        lineWidth += doc.getTextWidth(splitTexts[i]);
-                    }
-                } else {
-                    // Le texte tient sur la ligne actuelle
-                    lineSegments.push(segment);
-                    lineWidth += doc.getTextWidth(segment.text);
-                }
-            });
+                // Ajouter le segment à la ligne actuelle
+                lineSegments.push(segment);
+                lineWidth += segmentWidth;
+            }
             
             // Rendre la dernière ligne accumulée
             if (lineSegments.length > 0) {
-                renderLine(doc, lineSegments, currentX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
+                renderLine(doc, lineSegments, paragrapheStartX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
                 yPosition += lineHeightMm;
             }
         }
