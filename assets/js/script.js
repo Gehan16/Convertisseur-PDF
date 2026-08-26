@@ -554,8 +554,8 @@ function formatText(command) {
 }
 
 /**
- * Récupère le texte avec son alignement pour jsPDF
- * @returns {Array} Tableau d'objets avec text et align
+ * Récupère le texte avec son formatage pour jsPDF (par segments)
+ * @returns {Array} Tableau d'objets avec text, align, isBold, isUnderline
  */
 function parseFormattedText() {
     const editor = textEditor;
@@ -566,48 +566,16 @@ function parseFormattedText() {
     
     // Si aucun élément trouvé, utiliser le texte brut
     if (lineElements.length === 0) {
-        const text = editor.textContent;
-        if (text && text.trim()) {
-            // Détecter le gras et le souligné dans le texte brut
-            let isBold = false;
-            let isUnderline = false;
-            
-            // Vérifier les balises b, strong, u
-            const boldElements = editor.querySelectorAll('b, strong');
-            if (boldElements.length > 0) isBold = true;
-            else {
-                const boldSpans = editor.querySelectorAll('span[style*="font-weight"]');
-                boldSpans.forEach(span => {
-                    const style = span.getAttribute('style') || '';
-                    if (style.includes('bold') || style.includes('700')) {
-                        isBold = true;
-                    }
-                });
-            }
-            
-            const underlineElements = editor.querySelectorAll('u');
-            if (underlineElements.length > 0) isUnderline = true;
-            else {
-                const underlineSpans = editor.querySelectorAll('span[style*="text-decoration"]');
-                underlineSpans.forEach(span => {
-                    const style = span.getAttribute('style') || '';
-                    if (style.includes('underline')) {
-                        isUnderline = true;
-                    }
-                });
-            }
-            
-            result.push({
-                text: text,  // Conserver les espaces
-                align: 'left',
-                isBold: isBold,
-                isUnderline: isUnderline
-            });
+        // Traiter le contenu de l'éditeur comme une seule ligne
+        const children = editor.childNodes;
+        if (children.length > 0) {
+            const segments = extractTextSegments(children, 'left');
+            result.push(...segments);
         }
         return result;
     }
 
-    // Traiter chaque élément
+    // Traiter chaque élément (ligne)
     lineElements.forEach(element => {
         const hasBr = element.querySelector('br') !== null;
         const trimmedText = element.textContent.trim();
@@ -626,56 +594,114 @@ function parseFormattedText() {
         // Si c'est un élément vide sans <br>, on l'ignore
         if (trimmedText === '' && !hasBr) return;
         
-        // Détecter l'alignement
+        // Détecter l'alignement de la ligne
         let align = 'left';
         if (element.hasAttribute('align')) {
             align = element.getAttribute('align');
         }
-
-        // Détecter si le texte est en gras
-        let isBold = false;
-        const boldElements = element.querySelectorAll('b, strong');
-        if (boldElements.length > 0) {
-            isBold = true;
-        } else {
-            // Vérifier les spans avec font-weight: bold
-            const boldSpans = element.querySelectorAll('span[style*="font-weight"]');
-            boldSpans.forEach(span => {
-                const style = span.getAttribute('style') || '';
-                if (style.includes('bold') || style.includes('700')) {
-                    isBold = true;
-                }
-            });
-        }
-
-        // Détecter si le texte est souligné
-        let isUnderline = false;
-        const underlineElements = element.querySelectorAll('u');
-        if (underlineElements.length > 0) {
-            isUnderline = true;
-        } else {
-            // Vérifier les spans avec text-decoration: underline
-            const underlineSpans = element.querySelectorAll('span[style*="text-decoration"]');
-            underlineSpans.forEach(span => {
-                const style = span.getAttribute('style') || '';
-                if (style.includes('underline')) {
-                    isUnderline = true;
-                }
-            });
-        }
-
-        // Extraire le texte brut (conserve les espaces)
-        const rawText = element.textContent || element.innerText || '';
-
-        result.push({
-            text: rawText || ' ',  // Garder un espace pour les lignes vides
-            align: align,
-            isBold: isBold,
-            isUnderline: isUnderline
-        });
+        
+        // Extraire les segments de texte avec leur formatage
+        const segments = extractTextSegments(element.childNodes, align);
+        result.push(...segments);
     });
 
     return result;
+}
+
+/**
+ * Extrait les segments de texte avec leur formatage
+ * @param {NodeList} nodes - Les nœuds à traiter
+ * @param {string} defaultAlign - L'alignement par défaut
+ * @returns {Array} Tableau de segments avec text, align, isBold, isUnderline
+ */
+function extractTextSegments(nodes, defaultAlign) {
+    const segments = [];
+    
+    nodes.forEach(node => {
+        // Ignorer les nœuds vides (textes vides, commentaires, etc.)
+        if (node.nodeType === Node.COMMENT_NODE) return;
+        if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) return;
+        
+        // Si c'est un nœud texte
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent;
+            if (text.trim()) {
+                segments.push({
+                    text: text,
+                    align: defaultAlign,
+                    isBold: false,
+                    isUnderline: false
+                });
+            }
+            return;
+        }
+        
+        // Si c'est un élément (balise)
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            // Détecter le formatage de cet élément
+            const isBold = isElementBold(node);
+            const isUnderline = isElementUnderlined(node);
+            
+            // Extraire le texte de cet élément
+            const text = node.textContent;
+            if (text.trim()) {
+                segments.push({
+                    text: text,
+                    align: defaultAlign,
+                    isBold: isBold,
+                    isUnderline: isUnderline
+                });
+            }
+            
+            // Traiter les enfants récursivement (pour les spans imbriqués)
+            if (node.childNodes.length > 0) {
+                const childSegments = extractTextSegments(node.childNodes, defaultAlign);
+                segments.push(...childSegments);
+            }
+        }
+    });
+    
+    return segments;
+}
+
+/**
+ * Vérifie si un élément est en gras
+ * @param {HTMLElement} element - L'élément à vérifier
+ * @returns {boolean} True si l'élément est en gras
+ */
+function isElementBold(element) {
+    // Balises b, strong
+    if (element.tagName === 'B' || element.tagName === 'STRONG') {
+        return true;
+    }
+    
+    // Spans avec font-weight: bold
+    const style = element.getAttribute('style') || '';
+    if (style.includes('bold') || style.includes('700')) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Vérifie si un élément est souligné
+ * @param {HTMLElement} element - L'élément à vérifier
+ * @returns {boolean} True si l'élément est souligné
+ */
+function isElementUnderlined(element) {
+    // Balise u
+    if (element.tagName === 'U') {
+        return true;
+    }
+    
+    // Spans avec text-decoration: underline
+    const style = element.getAttribute('style') || '';
+    if (style.includes('underline')) {
+        return true;
+    }
+    
+    return false;
 }function updateTextButtonState() {
     textDownloadBtn.disabled = textEditor.textContent.trim() === '';
 }
