@@ -573,11 +573,12 @@ async function convertTextToPDF() {
         const marginLeft = parseFloat(textMarginLeft.value);
         const marginRight = parseFloat(textMarginRight.value);
 
-        // Créer le document PDF
+        // Créer le document PDF avec compression d'images
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: 'a4'
+            format: 'a4',
+            compress: true
         });
 
         const pageWidth = doc.internal.pageSize.getWidth();
@@ -589,11 +590,11 @@ async function convertTextToPDF() {
         // Utiliser les dimensions en pixels pour html2canvas
         const dpi = 72;
         const mmPerInch = 25.4;
-        const scale = 2; // Facteur d'échelle pour haute résolution
+        const scale = 1.5; // Facteur d'échelle pour haute résolution
         
         // Convertir les dimensions en pixels
-        const contentWidthPx = (contentWidth / mmPerInch) * dpi * scale;
-        const contentHeightPx = (contentHeight / mmPerInch) * dpi * scale;
+        const contentWidthPx = (contentWidth / mmPerInch) * dpi * 1.5;
+        const contentHeightPx = (contentHeight / mmPerInch) * dpi * 1.5;
         
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
@@ -654,12 +655,12 @@ async function convertTextToPDF() {
         
         document.body.appendChild(tempContainer);
 
-        // Utiliser html2canvas avec une haute résolution
-        // Ne pas limiter la hauteur pour capturer tout le contenu
+        // Utiliser html2canvas avec une résolution réduite pour réduire la taille du PDF
+        // scale: 1.5 au lieu de 2 pour réduire la taille sans trop perdre en qualité
         const canvas = await html2canvas(tempContainer, {
-            scale: scale,
+            scale: 1.5,
             backgroundColor: 'white',
-            logging: true,
+            logging: false,
             useCORS: true,
             allowTaint: true,
             scrollX: 0,
@@ -669,9 +670,9 @@ async function convertTextToPDF() {
         });
 
         // Calculer les dimensions de l'image en mm
-        // Convertir les pixels en mm (divisé par scale)
-        const imageWidthMm = (canvas.width / dpi) * mmPerInch / scale;
-        const imageHeightMm = (canvas.height / dpi) * mmPerInch / scale;
+        // Convertir les pixels en mm (divisé par 1.5, le nouveau scale)
+        const imageWidthMm = (canvas.width / dpi) * mmPerInch / 1.5;
+        const imageHeightMm = (canvas.height / dpi) * mmPerInch / 1.5;
         
         // Ajouter l'image au PDF
         // Toujours aligner en haut à gauche de la zone de contenu (respect des marges)
