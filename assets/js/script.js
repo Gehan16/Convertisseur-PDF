@@ -603,13 +603,18 @@ async function convertTextToPDF() {
         tempContainer.style.padding = '0';
         tempContainer.style.boxSizing = 'border-box';
         tempContainer.style.overflow = 'visible';
-        tempContainer.style.fontFamily = 'Inter, sans-serif';
-        tempContainer.style.fontSize = '16px';
-        tempContainer.style.lineHeight = '1.5';
-        tempContainer.style.color = '#333';
+        
+        // Récupérer les styles réels de l'éditeur Quill
+        const quillEditor = document.querySelector('#textEditor .ql-editor');
+        const editorStyle = window.getComputedStyle(quillEditor);
+        tempContainer.style.fontFamily = editorStyle.fontFamily || 'Inter, sans-serif';
+        tempContainer.style.fontSize = editorStyle.fontSize || '16px';
+        tempContainer.style.lineHeight = editorStyle.lineHeight || '1.5';
+        tempContainer.style.color = editorStyle.color || '#333';
         tempContainer.style.whiteSpace = 'pre-wrap';
         tempContainer.style.wordBreak = 'break-word';
         tempContainer.style.wordWrap = 'break-word';
+        tempContainer.style.overflowWrap = 'anywhere';
         tempContainer.style.maxWidth = `${contentWidthPx}px`;
         
         // Copier le contenu de Quill
@@ -629,12 +634,21 @@ async function convertTextToPDF() {
                 margin: 0 0 1em 0 !important; 
                 white-space: pre-wrap !important;
                 word-wrap: break-word !important;
+                overflow-wrap: anywhere !important;
+                max-width: ${contentWidthPx}px !important;
             }
             .ql-editor p { 
                 margin: 0 0 1em 0 !important; 
             }
+            .ql-editor { 
+                max-width: ${contentWidthPx}px !important;
+            }
         `;
         tempContainer.appendChild(style);
+        
+        // Forcer le contenu à respecter la largeur
+        tempContainer.style.maxWidth = `${contentWidthPx}px`;
+        tempContainer.style.overflowWrap = 'anywhere';
         
         document.body.appendChild(tempContainer);
 
@@ -658,17 +672,26 @@ async function convertTextToPDF() {
         const imageHeightMm = (canvas.height / dpi) * mmPerInch / scale;
         
         // Ajouter l'image au PDF
-        // Toujours aligner en haut de la zone de contenu (pas de centrage vertical)
+        // Toujours aligner en haut à gauche de la zone de contenu (respect des marges)
         const x = marginLeft;
         const y = marginTop;
         
-        // Si l'image est plus haute que la page disponible, la découper en plusieurs pages
-        // On ne redimensionne PAS horizontalement ici - la largeur est déjà correcte
-        // car le conteneur a été créé avec contentWidthPx
+        // Vérifier si l'image est plus large que la zone de contenu
+        // Si oui, la redimensionner proportionnellement
+        let finalWidth = imageWidthMm;
+        let finalHeight = imageHeightMm;
         
-        if (imageHeightMm > contentHeight) {
+        if (imageWidthMm > contentWidth) {
+            // Redimensionner proportionnellement pour respecter la largeur
+            const scaleFactor = contentWidth / imageWidthMm;
+            finalWidth = contentWidth;
+            finalHeight = imageHeightMm * scaleFactor;
+        }
+        
+        // Si l'image est plus haute que la page disponible, la découper en plusieurs pages
+        if (finalHeight > contentHeight) {
             // Calculer combien de pages sont nécessaires
-            const totalPages = Math.ceil(imageHeightMm / contentHeight);
+            const totalPages = Math.ceil(finalHeight / contentHeight);
             
             for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
                 if (pageIndex > 0) {
@@ -677,11 +700,11 @@ async function convertTextToPDF() {
                 
                 // Calculer la partie à découper
                 const startY = pageIndex * contentHeight;
-                const clipHeight = Math.min(contentHeight, imageHeightMm - startY);
+                const clipHeight = Math.min(contentHeight, finalHeight - startY);
                 
                 // Calculer les coordonnées en pixels pour le découpage
-                const startYPx = Math.round((startY / mmPerInch) * dpi * scale);
-                const clipHeightPx = Math.round((clipHeight / mmPerInch) * dpi * scale);
+                const startYPx = Math.round((startY / finalHeight) * canvas.height);
+                const clipHeightPx = Math.round((clipHeight / finalHeight) * canvas.height);
                 
                 // Créer un canvas temporaire pour la partie à découper
                 const partCanvas = document.createElement('canvas');
@@ -697,15 +720,14 @@ async function convertTextToPDF() {
                 );
                 
                 // Convertir en mm
-                const partHeightMm = (clipHeightPx / dpi) * mmPerInch / scale;
+                const partHeightMm = clipHeight; // Déjà en mm
                 
                 // Ajouter au PDF - toujours en haut de la page
-                // Utiliser imageWidthMm (largeur originale) qui correspond exactement à contentWidth
-                doc.addImage(partCanvas, 'PNG', x, marginTop, imageWidthMm, partHeightMm);
+                doc.addImage(partCanvas, 'PNG', x, marginTop, finalWidth, partHeightMm);
             }
         } else {
             // L'image tient sur une seule page
-            doc.addImage(canvas, 'PNG', x, y, imageWidthMm, imageHeightMm);
+            doc.addImage(canvas, 'PNG', x, y, finalWidth, finalHeight);
         }
 
         // Réactiver le bouton AVANT doc.save() car doc.save() est bloquant
