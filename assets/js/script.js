@@ -604,11 +604,13 @@ async function convertTextToPDF() {
         tempContainer.style.boxSizing = 'border-box';
         tempContainer.style.overflow = 'visible';
         
-        // Récupérer les styles réels de l'éditeur Quill
+        // Récupérer les styles réels de l'éditeur Quill et les agrandir légèrement
         const quillEditor = document.querySelector('#textEditor .ql-editor');
         const editorStyle = window.getComputedStyle(quillEditor);
         tempContainer.style.fontFamily = editorStyle.fontFamily || 'Inter, sans-serif';
-        tempContainer.style.fontSize = editorStyle.fontSize || '16px';
+        // Agrandir le texte de 120%
+        const originalFontSize = parseFloat(editorStyle.fontSize || '16px');
+        tempContainer.style.fontSize = `${originalFontSize * 1.2}px`;
         tempContainer.style.lineHeight = editorStyle.lineHeight || '1.5';
         tempContainer.style.color = editorStyle.color || '#333';
         tempContainer.style.whiteSpace = 'pre-wrap';
