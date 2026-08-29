@@ -599,15 +599,18 @@ async function convertTextToPDF() {
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
         tempContainer.style.width = `${contentWidthPx}px`;
-        tempContainer.style.maxHeight = `${contentHeightPx}px`;
         tempContainer.style.backgroundColor = 'white';
         tempContainer.style.padding = '0';
         tempContainer.style.boxSizing = 'border-box';
-        tempContainer.style.overflow = 'hidden';
+        tempContainer.style.overflow = 'visible';
         tempContainer.style.fontFamily = 'Inter, sans-serif';
         tempContainer.style.fontSize = '16px';
         tempContainer.style.lineHeight = '1.5';
         tempContainer.style.color = '#333';
+        tempContainer.style.whiteSpace = 'pre-wrap';
+        tempContainer.style.wordBreak = 'break-word';
+        tempContainer.style.wordWrap = 'break-word';
+        tempContainer.style.maxWidth = `${contentWidthPx}px`;
         
         // Copier le contenu de Quill
         tempContainer.innerHTML = htmlContent;
@@ -636,18 +639,17 @@ async function convertTextToPDF() {
         document.body.appendChild(tempContainer);
 
         // Utiliser html2canvas avec une haute résolution
+        // Ne pas limiter la hauteur pour capturer tout le contenu
         const canvas = await html2canvas(tempContainer, {
             scale: scale,
             backgroundColor: 'white',
-            logging: false,
+            logging: true,
             useCORS: true,
             allowTaint: true,
             scrollX: 0,
             scrollY: 0,
             x: 0,
-            y: 0,
-            windowWidth: contentWidthPx,
-            windowHeight: tempContainer.scrollHeight
+            y: 0
         });
 
         // Calculer les dimensions de l'image en mm
@@ -671,22 +673,23 @@ async function convertTextToPDF() {
             finalHeight = imageHeightMm * scaleFactor;
         }
         
-        // Si l'image est plus haute que la page disponible, la découper en plusieurs parties
+        // Si l'image est plus haute que la page disponible, la découper en plusieurs pages
         if (finalHeight > contentHeight) {
-            // Calculer combien de parties sont nécessaires
-            const totalParts = Math.ceil(finalHeight / contentHeight);
+            // Calculer combien de pages sont nécessaires
+            const totalPages = Math.ceil(finalHeight / contentHeight);
             
-            for (let partIndex = 0; partIndex < totalParts; partIndex++) {
-                if (partIndex > 0) {
+            for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+                if (pageIndex > 0) {
                     doc.addPage();
                 }
                 
-                const startY = partIndex * contentHeight;
+                // Calculer la partie à découper
+                const startY = pageIndex * contentHeight;
                 const clipHeight = Math.min(contentHeight, finalHeight - startY);
                 
                 // Calculer les coordonnées en pixels pour le découpage
-                const startYPx = (startY / mmPerInch) * dpi * scale;
-                const clipHeightPx = (clipHeight / mmPerInch) * dpi * scale;
+                const startYPx = Math.round((startY / mmPerInch) * dpi * scale);
+                const clipHeightPx = Math.round((clipHeight / mmPerInch) * dpi * scale);
                 
                 // Créer un canvas temporaire pour la partie à découper
                 const partCanvas = document.createElement('canvas');
