@@ -467,11 +467,12 @@ async function mergePDFs() {
         const marginLeft = parseFloat(pdfMarginLeft.value);
         const marginRight = parseFloat(pdfMarginRight.value);
 
-        // Créer un nouveau PDF avec jsPDF (première page A4 portrait par défaut)
+        // Créer un nouveau PDF avec jsPDF avec compression (première page A4 portrait par défaut)
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: 'a4'
+            format: 'a4',
+            compress: true
         });
 
         // Traiter chaque PDF
@@ -507,8 +508,8 @@ async function mergePDFs() {
                     ], orientation);
                 }
 
-                // Rendre la page sur un canvas avec un scale élevé pour la qualité
-                const scale = 2.0;
+                // Rendre la page sur un canvas avec un scale réduit pour réduire la taille du fichier
+                const scale = 1.5;
                 const viewport = page.getViewport({ scale: scale });
 
                 const canvas = document.createElement('canvas');
@@ -521,13 +522,14 @@ async function mergePDFs() {
                     viewport: viewport
                 }).promise;
 
-                // Ajouter l'image au PDF avec les marges
+                // Ajouter l'image au PDF avec les marges et compression JPEG pour réduire la taille
                 const currentPageWidth = doc.internal.pageSize.getWidth();
                 const currentPageHeight = doc.internal.pageSize.getHeight();
                 const usableWidth = currentPageWidth - marginLeft - marginRight;
                 const usableHeight = currentPageHeight - marginTop - marginBottom;
                 
-                doc.addImage(canvas, 'PNG', marginLeft, marginTop, usableWidth, usableHeight);
+                // Utiliser JPEG avec qualité 0.92 au lieu de PNG pour réduire la taille
+                doc.addImage(canvas, 'JPEG', marginLeft, marginTop, usableWidth, usableHeight, undefined, 'FAST');
             }
             
             // Libérer l'URL objet
