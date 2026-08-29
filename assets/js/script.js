@@ -13,7 +13,7 @@ const { jsPDF } = window.jspdf;
 
 // Initialisation de pdf.js pour la fusion de PDF
 const pdfjsLib = window['pdfjs-dist/build/pdf'];
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/librairies/pdfjs/pdf.worker.min.js';
 
 // ============================================================================
 // DONNÉES GLOBALES
