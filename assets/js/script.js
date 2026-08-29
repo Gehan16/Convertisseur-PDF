@@ -509,7 +509,7 @@ async function mergePDFs() {
                 }
 
                 // Rendre la page sur un canvas avec un scale réduit pour réduire la taille du fichier
-                const scale = 1.5;
+                const scale = 1.8;
                 const viewport = page.getViewport({ scale: scale });
 
                 const canvas = document.createElement('canvas');
