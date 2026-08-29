@@ -583,25 +583,31 @@ async function convertTextToPDF() {
         const contentHeight = pageHeight - marginTop - marginBottom;
 
         // Créer un conteneur temporaire pour le contenu
+        // Utiliser les dimensions en pixels pour html2canvas
+        const dpi = 72;
+        const mmPerInch = 25.4;
+        const scale = 2; // Facteur d'échelle pour haute résolution
+        
+        // Convertir les dimensions en pixels
+        const contentWidthPx = (contentWidth / mmPerInch) * dpi * scale;
+        const contentHeightPx = (contentHeight / mmPerInch) * dpi * scale;
+        
         const tempContainer = document.createElement('div');
         tempContainer.style.position = 'absolute';
         tempContainer.style.left = '-9999px';
-        tempContainer.style.width = `${contentWidth}mm`;
+        tempContainer.style.width = `${contentWidthPx}px`;
+        tempContainer.style.maxHeight = `${contentHeightPx}px`;
         tempContainer.style.backgroundColor = 'white';
-        tempContainer.style.padding = '10px';
+        tempContainer.style.padding = '0';
         tempContainer.style.boxSizing = 'border-box';
-        tempContainer.style.overflow = 'visible';
+        tempContainer.style.overflow = 'hidden';
+        tempContainer.style.fontFamily = 'Inter, sans-serif';
+        tempContainer.style.fontSize = '16px';
+        tempContainer.style.lineHeight = '1.5';
+        tempContainer.style.color = '#333';
         
         // Copier le contenu de Quill
         tempContainer.innerHTML = htmlContent;
-        
-        // Appliquer les styles de Quill
-        const quillEditor = document.querySelector('#textEditor .ql-editor');
-        const computedStyle = window.getComputedStyle(quillEditor);
-        tempContainer.style.fontFamily = computedStyle.fontFamily;
-        tempContainer.style.fontSize = computedStyle.fontSize;
-        tempContainer.style.lineHeight = computedStyle.lineHeight;
-        tempContainer.style.color = computedStyle.color;
         
         // Ajouter les styles pour les classes Quill
         const style = document.createElement('style');
@@ -613,56 +619,71 @@ async function convertTextToPDF() {
             strong, b { font-weight: bold !important; }
             em, i { font-style: italic !important; }
             u { text-decoration: underline !important; }
-            p { margin: 0 0 1em 0 !important; }
+            p { 
+                margin: 0 0 1em 0 !important; 
+                white-space: pre-wrap !important;
+                word-wrap: break-word !important;
+            }
+            .ql-editor p { 
+                margin: 0 0 1em 0 !important; 
+            }
         `;
         tempContainer.appendChild(style);
         
         document.body.appendChild(tempContainer);
 
-        // Utiliser html2canvas avec une haute résolution (scale: 2 pour bonne qualité)
+        // Utiliser html2canvas avec une haute résolution
         const canvas = await html2canvas(tempContainer, {
-            scale: 2,
+            scale: scale,
             backgroundColor: 'white',
             logging: false,
             useCORS: true,
             allowTaint: true,
-            scrollX: -10000,
+            scrollX: 0,
             scrollY: 0,
             x: 0,
             y: 0,
-            windowWidth: tempContainer.scrollWidth,
+            windowWidth: contentWidthPx,
             windowHeight: tempContainer.scrollHeight
         });
 
         // Calculer les dimensions de l'image en mm
-        const dpi = 72;
-        const mmPerInch = 25.4;
-        
-        // Convertir les pixels en mm (divisé par 2 car scale=2)
-        const imageWidthMm = (canvas.width / dpi) * mmPerInch / 2;
-        const imageHeightMm = (canvas.height / dpi) * mmPerInch / 2;
+        // Convertir les pixels en mm (divisé par scale)
+        const imageWidthMm = (canvas.width / dpi) * mmPerInch / scale;
+        const imageHeightMm = (canvas.height / dpi) * mmPerInch / scale;
         
         // Ajouter l'image au PDF
-        let currentY = marginTop;
-        let currentPageHeightUsed = 0;
+        // Toujours aligner en haut de la zone de contenu (pas de centrage vertical)
+        const x = marginLeft;
+        const y = marginTop;
+        
+        // Si l'image est plus large que la zone de contenu, la redimensionner
+        let finalWidth = imageWidthMm;
+        let finalHeight = imageHeightMm;
+        
+        if (imageWidthMm > contentWidth) {
+            // Redimensionner proportionnellement
+            const scaleFactor = contentWidth / imageWidthMm;
+            finalWidth = contentWidth;
+            finalHeight = imageHeightMm * scaleFactor;
+        }
         
         // Si l'image est plus haute que la page disponible, la découper en plusieurs parties
-        if (imageHeightMm > contentHeight) {
-            // Calculer combien de pages sont nécessaires
-            const totalPages = Math.ceil(imageHeightMm / contentHeight);
+        if (finalHeight > contentHeight) {
+            // Calculer combien de parties sont nécessaires
+            const totalParts = Math.ceil(finalHeight / contentHeight);
             
-            for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-                if (pageIndex > 0) {
+            for (let partIndex = 0; partIndex < totalParts; partIndex++) {
+                if (partIndex > 0) {
                     doc.addPage();
-                    currentY = marginTop;
                 }
                 
-                const startY = pageIndex * contentHeight;
-                const clipHeight = Math.min(contentHeight, imageHeightMm - startY);
+                const startY = partIndex * contentHeight;
+                const clipHeight = Math.min(contentHeight, finalHeight - startY);
                 
                 // Calculer les coordonnées en pixels pour le découpage
-                const startYPx = (startY / mmPerInch) * dpi * 2; // Convertir mm en px avec scale=2
-                const clipHeightPx = (clipHeight / mmPerInch) * dpi * 2;
+                const startYPx = (startY / mmPerInch) * dpi * scale;
+                const clipHeightPx = (clipHeight / mmPerInch) * dpi * scale;
                 
                 // Créer un canvas temporaire pour la partie à découper
                 const partCanvas = document.createElement('canvas');
@@ -678,17 +699,14 @@ async function convertTextToPDF() {
                 );
                 
                 // Convertir en mm
-                const partHeightMm = (clipHeightPx / dpi) * mmPerInch / 2;
+                const partHeightMm = (clipHeightPx / dpi) * mmPerInch / scale;
                 
-                // Ajouter au PDF
-                const x = marginLeft + (contentWidth - imageWidthMm) / 2;
-                doc.addImage(partCanvas, 'PNG', x, currentY, imageWidthMm, partHeightMm);
+                // Ajouter au PDF - toujours en haut de la page
+                doc.addImage(partCanvas, 'PNG', x, marginTop, finalWidth, partHeightMm);
             }
         } else {
             // L'image tient sur une seule page
-            const x = marginLeft + (contentWidth - imageWidthMm) / 2;
-            const y = marginTop + (contentHeight - imageHeightMm) / 2;
-            doc.addImage(canvas, 'PNG', x, y, imageWidthMm, imageHeightMm);
+            doc.addImage(canvas, 'PNG', x, y, finalWidth, finalHeight);
         }
 
         doc.save('texte-converti.pdf');
