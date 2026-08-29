@@ -612,7 +612,8 @@ async function convertTextToPDF() {
         // Agrandir le texte de 144% (1.2 * 1.2)
         const originalFontSize = parseFloat(editorStyle.fontSize || '16px');
         tempContainer.style.fontSize = `${originalFontSize * 1.44}px`;
-        tempContainer.style.lineHeight = editorStyle.lineHeight || '1.5';
+        // Augmenter légèrement l'interligne (1.5 → 1.7)
+        tempContainer.style.lineHeight = '1.7';
         tempContainer.style.color = editorStyle.color || '#333';
         tempContainer.style.whiteSpace = 'pre-wrap';
         tempContainer.style.wordBreak = 'break-word';
@@ -634,11 +635,12 @@ async function convertTextToPDF() {
             em, i { font-style: italic !important; }
             u { text-decoration: underline !important; }
             p { 
-                margin: 0 0 1em 0 !important; 
+                margin: 0 0 1.2em 0 !important; 
                 white-space: pre-wrap !important;
                 word-wrap: break-word !important;
                 overflow-wrap: anywhere !important;
                 max-width: ${contentWidthPx}px !important;
+                line-height: 1.7 !important;
             }
             .ql-editor p { 
                 margin: 0 0 1em 0 !important; 
