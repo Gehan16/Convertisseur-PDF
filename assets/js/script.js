@@ -100,34 +100,22 @@ document.addEventListener('DOMContentLoaded', () => {
             toolbar: [
                 ['bold', 'italic', 'underline'],
                 [{ 'align': [] }]
-            ]
+            ],
+            clipboard: {
+                // Autoriser le collage avec mise en forme
+                matchers: []
+            }
         },
         placeholder: 'Saisissez votre texte ici...'
-    });
-    
-    // Gérer le collage pour forcer le texte brut
-    const editorElement = document.querySelector('#textEditor .ql-editor');
-    editorElement.addEventListener('paste', function(e) {
-        // Empêcher le collage par défaut
-        e.preventDefault();
-        
-        // Récupérer le texte brut du presse-papiers
-        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-        
-        // Insérer le texte brut à la position actuelle
-        const selection = quill.getSelection();
-        if (selection) {
-            quill.insertText(selection.index, text, Quill.sources.USER);
-        } else {
-            // Si aucune sélection, ajouter à la fin
-            quill.insertText(quill.getLength(), text, Quill.sources.USER);
-        }
     });
     
     // Mettre à jour l'état du bouton quand le contenu change
     quill.on('text-change', function() {
         textDownloadBtn.disabled = quill.getLength() <= 1; // 1 = juste le saut de ligne
     });
+    
+    // Modifier le bouton pour qu'il soit async
+    textDownloadBtn.onclick = convertTextToPDF;
     
     // Configuration des zones de dépôt
     setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
@@ -563,115 +551,159 @@ async function mergePDFs() {
 // ============================================================================
 
 /**
- * Convertit le texte en PDF avec formatage (utilisant Quill)
- * Gère le formatage par segment de texte (gras, italique, souligné)
- * Gère le retour à la ligne automatique
+ * Convertit le texte en PDF en passant par une image pour préserver la mise en forme
+ * Utilise html2canvas pour capturer le contenu de Quill en image haute résolution
  */
-function convertTextToPDF() {
+async function convertTextToPDF() {
     const htmlContent = quill.root.innerHTML;
     if (!htmlContent || htmlContent === '<p><br></p>') return;
 
-    // Récupérer les marges
-    const marginTop = parseFloat(textMarginTop.value);
-    const marginBottom = parseFloat(textMarginBottom.value);
-    const marginLeft = parseFloat(textMarginLeft.value);
-    const marginRight = parseFloat(textMarginRight.value);
+    // Sauvegarder le texte original du bouton et le désactiver
+    const originalBtnText = textDownloadBtn.textContent;
+    textDownloadBtn.disabled = true;
+    textDownloadBtn.textContent = 'Conversion en cours...';
 
-    // Créer le document PDF
-    const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-    });
+    try {
+        // Récupérer les marges
+        const marginTop = parseFloat(textMarginTop.value);
+        const marginBottom = parseFloat(textMarginBottom.value);
+        const marginLeft = parseFloat(textMarginLeft.value);
+        const marginRight = parseFloat(textMarginRight.value);
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const maxWidth = pageWidth - marginLeft - marginRight;
-    let yPosition = marginTop;
+        // Créer le document PDF
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
 
-    // Configurer la police par défaut
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const contentWidth = pageWidth - marginLeft - marginRight;
+        const contentHeight = pageHeight - marginTop - marginBottom;
 
-    const lineHeightMm = 7; // Hauteur de ligne en mm
-
-    // Créer un élément temporaire pour parser le HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlContent;
-
-    // Traiter chaque paragraphe (Quill utilise des p)
-    const paragraphs = tempDiv.querySelectorAll('p');
-    
-    paragraphs.forEach((p, pIndex) => {
-        // Détecter l'alignement du paragraphe
-        let align = 'left';
-        if (p.style.textAlign) {
-            align = p.style.textAlign;
-        } else if (p.classList.contains('ql-align-center')) {
-            align = 'center';
-        } else if (p.classList.contains('ql-align-right')) {
-            align = 'right';
-        } else if (p.classList.contains('ql-align-justify')) {
-            align = 'justify';
-        }
-
-        // Extraire les segments de texte avec leur formatage
-        const segments = extractQuillSegments(p);
+        // Créer un conteneur temporaire pour le contenu
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.width = `${contentWidth}mm`;
+        tempContainer.style.backgroundColor = 'white';
+        tempContainer.style.padding = '10px';
+        tempContainer.style.boxSizing = 'border-box';
+        tempContainer.style.overflow = 'visible';
         
-        if (segments.length === 0) {
-            // Paragraphe vide = saut de ligne
-            yPosition += lineHeightMm;
-        } else {
-            // Position X de départ pour le paragraphe
-            let paragrapheStartX = marginLeft;
-            if (align === 'center') {
-                paragrapheStartX = pageWidth / 2;
-            } else if (align === 'right') {
-                paragrapheStartX = pageWidth - marginRight;
-            }
+        // Copier le contenu de Quill
+        tempContainer.innerHTML = htmlContent;
+        
+        // Appliquer les styles de Quill
+        const quillEditor = document.querySelector('#textEditor .ql-editor');
+        const computedStyle = window.getComputedStyle(quillEditor);
+        tempContainer.style.fontFamily = computedStyle.fontFamily;
+        tempContainer.style.fontSize = computedStyle.fontSize;
+        tempContainer.style.lineHeight = computedStyle.lineHeight;
+        tempContainer.style.color = computedStyle.color;
+        
+        // Ajouter les styles pour les classes Quill
+        const style = document.createElement('style');
+        style.textContent = `
+            .ql-align-center { text-align: center !important; }
+            .ql-align-right { text-align: right !important; }
+            .ql-align-justify { text-align: justify !important; }
+            .ql-align-left { text-align: left !important; }
+            strong, b { font-weight: bold !important; }
+            em, i { font-style: italic !important; }
+            u { text-decoration: underline !important; }
+            p { margin: 0 0 1em 0 !important; }
+        `;
+        tempContainer.appendChild(style);
+        
+        document.body.appendChild(tempContainer);
 
-            // Traiter les segments avec retour à la ligne automatique
-            let lineSegments = [];
-            let lineWidth = 0;
+        // Utiliser html2canvas avec une haute résolution (scale: 2 pour bonne qualité)
+        const canvas = await html2canvas(tempContainer, {
+            scale: 2,
+            backgroundColor: 'white',
+            logging: false,
+            useCORS: true,
+            allowTaint: true,
+            scrollX: -10000,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            windowWidth: tempContainer.scrollWidth,
+            windowHeight: tempContainer.scrollHeight
+        });
+
+        // Calculer les dimensions de l'image en mm
+        const dpi = 72;
+        const mmPerInch = 25.4;
+        
+        // Convertir les pixels en mm (divisé par 2 car scale=2)
+        const imageWidthMm = (canvas.width / dpi) * mmPerInch / 2;
+        const imageHeightMm = (canvas.height / dpi) * mmPerInch / 2;
+        
+        // Ajouter l'image au PDF
+        let currentY = marginTop;
+        let currentPageHeightUsed = 0;
+        
+        // Si l'image est plus haute que la page disponible, la découper en plusieurs parties
+        if (imageHeightMm > contentHeight) {
+            // Calculer combien de pages sont nécessaires
+            const totalPages = Math.ceil(imageHeightMm / contentHeight);
             
-            for (let segIndex = 0; segIndex < segments.length; segIndex++) {
-                const segment = segments[segIndex];
-                const segmentWidth = doc.getTextWidth(segment.text);
-                
-                // Vérifier si le segment tient sur la ligne actuelle
-                if (lineWidth + segmentWidth > maxWidth && lineSegments.length > 0) {
-                    // Le segment ne tient pas, rendre la ligne actuelle
-                    renderLine(doc, lineSegments, paragrapheStartX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
-                    yPosition += lineHeightMm;
-                    lineSegments = [];
-                    lineWidth = 0;
+            for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+                if (pageIndex > 0) {
+                    doc.addPage();
+                    currentY = marginTop;
                 }
                 
-                // Ajouter le segment à la ligne actuelle
-                lineSegments.push(segment);
-                lineWidth += segmentWidth;
+                const startY = pageIndex * contentHeight;
+                const clipHeight = Math.min(contentHeight, imageHeightMm - startY);
+                
+                // Calculer les coordonnées en pixels pour le découpage
+                const startYPx = (startY / mmPerInch) * dpi * 2; // Convertir mm en px avec scale=2
+                const clipHeightPx = (clipHeight / mmPerInch) * dpi * 2;
+                
+                // Créer un canvas temporaire pour la partie à découper
+                const partCanvas = document.createElement('canvas');
+                partCanvas.width = canvas.width;
+                partCanvas.height = clipHeightPx;
+                const partCtx = partCanvas.getContext('2d');
+                
+                // Dessiner la partie correspondante
+                partCtx.drawImage(
+                    canvas,
+                    0, startYPx, canvas.width, clipHeightPx,
+                    0, 0, canvas.width, clipHeightPx
+                );
+                
+                // Convertir en mm
+                const partHeightMm = (clipHeightPx / dpi) * mmPerInch / 2;
+                
+                // Ajouter au PDF
+                const x = marginLeft + (contentWidth - imageWidthMm) / 2;
+                doc.addImage(partCanvas, 'PNG', x, currentY, imageWidthMm, partHeightMm);
             }
-            
-            // Rendre la dernière ligne accumulée
-            if (lineSegments.length > 0) {
-                renderLine(doc, lineSegments, paragrapheStartX, yPosition, align, maxWidth, marginLeft, marginRight, pageWidth);
-                yPosition += lineHeightMm;
-            }
+        } else {
+            // L'image tient sur une seule page
+            const x = marginLeft + (contentWidth - imageWidthMm) / 2;
+            const y = marginTop + (contentHeight - imageHeightMm) / 2;
+            doc.addImage(canvas, 'PNG', x, y, imageWidthMm, imageHeightMm);
         }
 
-        // Ajouter un saut de ligne après chaque paragraphe (sauf le dernier)
-        if (pIndex < paragraphs.length - 1) {
-            yPosition += lineHeightMm * 0.5; // Petit espace entre paragraphes
+        doc.save('texte-converti.pdf');
+    } catch (error) {
+        console.error('Erreur lors de la conversion texte en PDF:', error);
+        alert('Une erreur est survenue lors de la conversion. Veuillez réessayer.');
+    } finally {
+        // Nettoyer
+        if (tempContainer && tempContainer.parentNode) {
+            document.body.removeChild(tempContainer);
         }
-
-        // Passer à la page suivante si nécessaire
-        if (yPosition > doc.internal.pageSize.getHeight() - marginBottom) {
-            doc.addPage();
-            yPosition = marginTop;
-        }
-    });
-
-    doc.save('texte-converti.pdf');
+        // Réactiver le bouton
+        textDownloadBtn.disabled = false;
+        textDownloadBtn.textContent = originalBtnText;
+    }
 }
 
 /**
