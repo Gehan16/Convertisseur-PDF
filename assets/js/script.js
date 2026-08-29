@@ -556,10 +556,13 @@ async function mergePDFs() {
  */
 async function convertTextToPDF() {
     const htmlContent = quill.root.innerHTML;
-    if (!htmlContent || htmlContent === '<p><br></p>') return;
+    if (!htmlContent || htmlContent === '<p><br></p>') {
+        return;
+    }
 
     // Sauvegarder le texte original du bouton et le désactiver
     const originalBtnText = textDownloadBtn.textContent;
+    const originalBtnDisabled = textDownloadBtn.disabled;
     textDownloadBtn.disabled = true;
     textDownloadBtn.textContent = 'Conversion en cours...';
 
@@ -718,8 +721,8 @@ async function convertTextToPDF() {
         if (tempContainer && tempContainer.parentNode) {
             document.body.removeChild(tempContainer);
         }
-        // Réactiver le bouton
-        textDownloadBtn.disabled = false;
+        // Réactiver le bouton dans tous les cas
+        textDownloadBtn.disabled = originalBtnDisabled;
         textDownloadBtn.textContent = originalBtnText;
     }
 }
