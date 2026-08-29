@@ -99,7 +99,9 @@ document.addEventListener('DOMContentLoaded', () => {
         modules: {
             toolbar: [
                 ['bold', 'italic', 'underline'],
-                [{ 'align': [] }]
+                [{ 'align': [] }],
+                [{ 'size': ['small', false, 'large', 'huge'] }],
+                [{ 'color': ['#000000', '#0000FF', '#008000', '#FF0000'] }]
             ],
             clipboard: {
                 // Autoriser le collage avec mise en forme
