@@ -650,6 +650,10 @@ async function convertTextToPDF() {
             .ql-editor { 
                 max-width: ${contentWidthPx}px !important;
             }
+            /* Styles pour les tailles de police Quill */
+            .ql-size-small { font-size: 10px !important; }
+            .ql-size-large { font-size: 24px !important; }
+            .ql-size-huge { font-size: 32px !important; }
         `;
         tempContainer.appendChild(style);
         
