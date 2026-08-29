@@ -662,21 +662,13 @@ async function convertTextToPDF() {
         const x = marginLeft;
         const y = marginTop;
         
-        // Si l'image est plus large que la zone de contenu, la redimensionner
-        let finalWidth = imageWidthMm;
-        let finalHeight = imageHeightMm;
-        
-        if (imageWidthMm > contentWidth) {
-            // Redimensionner proportionnellement
-            const scaleFactor = contentWidth / imageWidthMm;
-            finalWidth = contentWidth;
-            finalHeight = imageHeightMm * scaleFactor;
-        }
-        
         // Si l'image est plus haute que la page disponible, la découper en plusieurs pages
-        if (finalHeight > contentHeight) {
+        // On ne redimensionne PAS horizontalement ici - la largeur est déjà correcte
+        // car le conteneur a été créé avec contentWidthPx
+        
+        if (imageHeightMm > contentHeight) {
             // Calculer combien de pages sont nécessaires
-            const totalPages = Math.ceil(finalHeight / contentHeight);
+            const totalPages = Math.ceil(imageHeightMm / contentHeight);
             
             for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
                 if (pageIndex > 0) {
@@ -685,7 +677,7 @@ async function convertTextToPDF() {
                 
                 // Calculer la partie à découper
                 const startY = pageIndex * contentHeight;
-                const clipHeight = Math.min(contentHeight, finalHeight - startY);
+                const clipHeight = Math.min(contentHeight, imageHeightMm - startY);
                 
                 // Calculer les coordonnées en pixels pour le découpage
                 const startYPx = Math.round((startY / mmPerInch) * dpi * scale);
@@ -708,11 +700,12 @@ async function convertTextToPDF() {
                 const partHeightMm = (clipHeightPx / dpi) * mmPerInch / scale;
                 
                 // Ajouter au PDF - toujours en haut de la page
-                doc.addImage(partCanvas, 'PNG', x, marginTop, finalWidth, partHeightMm);
+                // Utiliser imageWidthMm (largeur originale) qui correspond exactement à contentWidth
+                doc.addImage(partCanvas, 'PNG', x, marginTop, imageWidthMm, partHeightMm);
             }
         } else {
             // L'image tient sur une seule page
-            doc.addImage(canvas, 'PNG', x, y, finalWidth, finalHeight);
+            doc.addImage(canvas, 'PNG', x, y, imageWidthMm, imageHeightMm);
         }
 
         // Réactiver le bouton AVANT doc.save() car doc.save() est bloquant
