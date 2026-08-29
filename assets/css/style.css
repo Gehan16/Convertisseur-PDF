@@ -1,4 +1,30 @@
-/* Reset et base */
+/**
+ * ============================================================================
+ * STYLES CSS - CONVERTEUR PDF
+ * ============================================================================
+ * 
+ * Description : Feuille de styles pour l'application Convertisseur PDF
+ * Auteur : Gehan16
+ * 
+ * Structure:
+ *   1. Reset et styles de base
+ *   2. Layout et conteneurs
+ *   3. Composants spécifiques (boutons, zones de dépôt, etc.)
+ *   4. Éditeur Quill
+ *   5. Responsive design
+ * 
+ * ============================================================================
+ */
+
+
+/* ============================================================================
+ * SECTION 1 : RESET ET STYLES DE BASE
+ * ============================================================================
+ * 
+ * Remet à zéro les styles par défaut du navigateur
+ * et définit les styles globaux de l'application.
+ */
+
 * {
     margin: 0;
     padding: 0;
@@ -12,7 +38,13 @@ body {
     line-height: 1.6;
 }
 
-/* Conteneur principal */
+
+/* ============================================================================
+ * SECTION 2 : LAYOUT ET CONTAINERS
+ * ============================================================================
+ */
+
+/* Conteneur principal de l'application */
 .main-container {
     display: flex;
     max-width: 1200px;
@@ -21,7 +53,7 @@ body {
     gap: 20px;
 }
 
-/* Contenu principal et sidebar */
+/* Contenu principal (zone centrale) */
 .content {
     flex: 1;
     background-color: white;
@@ -30,6 +62,7 @@ body {
     padding: 30px;
 }
 
+/* Sidebar (colonne de droite) */
 .sidebar {
     width: 280px;
     background-color: transparent;
@@ -38,23 +71,13 @@ body {
     height: fit-content;
 }
 
-/* Logo */
-.logo-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px 0;
-    width: 100%;
-    background-color: transparent;
-}
 
-.logo {
-    max-width: 96px;  /* 80px * 1.2 = 96px (20% plus gros) */
-    height: auto;
-    background-color: transparent;
-}
+/* ============================================================================
+ * SECTION 3 : HEADER
+ * ============================================================================
+ */
 
-/* Header */
+/* Conteneur du header */
 .header {
     text-align: center;
     margin-bottom: 30px;
@@ -71,7 +94,13 @@ body {
     font-size: 16px;
 }
 
-/* Sections */
+
+/* ============================================================================
+ * SECTION 4 : SECTIONS ET TITRES
+ * ============================================================================
+ */
+
+/* Style des sections principales */
 .section {
     margin-bottom: 40px;
     padding-bottom: 20px;
@@ -81,13 +110,19 @@ body {
     margin-bottom: 0;
 }
 
+/* Titre des sections */
 .section-title {
     color: #2c3e50;
     margin-bottom: 15px;
     font-size: 20px;
 }
 
-/* Textarea */
+
+/* ============================================================================
+ * SECTION 5 : ÉLÉMENTS DE FORMULAIRE (pour compatibilité)
+ * ============================================================================
+ */
+
 textarea {
     width: 100%;
     min-height: 150px;
@@ -100,7 +135,13 @@ textarea {
     font-family: 'Inter', sans-serif;
 }
 
-/* Boutons */
+
+/* ============================================================================
+ * SECTION 6 : BOUTONS
+ * ============================================================================
+ */
+
+/* Groupe de boutons (conteneur flex) */
 .button-group {
     display: flex;
     gap: 10px;
@@ -108,6 +149,7 @@ textarea {
     margin-top: 10px;
 }
 
+/* Style de base des boutons */
 .btn {
     padding: 10px 20px;
     border: none;
@@ -116,13 +158,18 @@ textarea {
     font-weight: 500;
     font-size: 16px;
     transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
+/* Bouton désactivé */
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
+/* Bouton primaire (action principale) */
 .btn-primary {
     background-color: #007bff;
     color: white;
@@ -132,6 +179,7 @@ textarea {
     background-color: #0069d9;
 }
 
+/* Bouton succès */
 .btn-success {
     background-color: #28a745;
     color: white;
@@ -141,6 +189,7 @@ textarea {
     background-color: #218838;
 }
 
+/* Bouton avertissement */
 .btn-warning {
     background-color: #ffc107;
     color: #212529;
@@ -150,6 +199,7 @@ textarea {
     background-color: #e0a800;
 }
 
+/* Bouton secondaire */
 .btn-secondary {
     background-color: #6c757d;
     color: white;
@@ -159,7 +209,13 @@ textarea {
     background-color: #5a6268;
 }
 
-/* Zones de drop */
+
+/* ============================================================================
+ * SECTION 7 : ZONES DE DÉPÔT (DRAG & DROP)
+ * ============================================================================
+ */
+
+/* Style de base des zones de dépôt */
 .drop-zone {
     border: 2px dashed #ced4da;
     border-radius: 8px;
@@ -171,16 +227,19 @@ textarea {
     background-color: #f8f9fa;
 }
 
+/* Effet au survol */
 .drop-zone:hover {
     border-color: #007bff;
     background-color: rgba(0, 123, 255, 0.05);
 }
 
+/* Effet pendant le drag over */
 .drop-zone.dragover {
     border-color: #007bff;
     background-color: rgba(0, 123, 255, 0.1);
 }
 
+/* Icône dans la zone de dépôt */
 .drop-zone i {
     font-size: 32px;
     display: block;
@@ -193,7 +252,13 @@ textarea {
     font-size: 16px;
 }
 
-/* Conteneur des fichiers */
+
+/* ============================================================================
+ * SECTION 8 : CONTAINER DE FICHIERS (MINIATURES)
+ * ============================================================================
+ */
+
+/* Conteneur des fichiers sélectionnés */
 .file-container {
     display: flex;
     flex-wrap: wrap;
@@ -201,6 +266,7 @@ textarea {
     margin: 15px 0;
 }
 
+/* Wrapper pour chaque fichier */
 .file-wrapper {
     position: relative;
     width: 120px;
@@ -211,12 +277,14 @@ textarea {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+/* Image dans le wrapper */
 .file-wrapper img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
+/* Bouton de suppression */
 .remove-btn {
     position: absolute;
     top: 5px;
@@ -239,7 +307,7 @@ textarea {
     background: rgba(0, 0, 0, 0.9);
 }
 
-/* Icône PDF */
+/* Icône PDF pour les miniatures */
 .pdf-icon {
     width: 100%;
     height: 60px;
@@ -262,7 +330,12 @@ textarea {
     text-overflow: ellipsis;
 }
 
-/* Messages d'erreur */
+
+/* ============================================================================
+ * SECTION 9 : MESSAGES D'ERREUR
+ * ============================================================================
+ */
+
 .error-message {
     color: #721c24;
     background-color: #f8d7da;
@@ -277,7 +350,12 @@ textarea {
     display: block;
 }
 
-/* Contrôles de marges */
+
+/* ============================================================================
+ * SECTION 10 : CONTRÔLES DE MARGES
+ * ============================================================================
+ */
+
 .margin-controls {
     margin: 15px 0;
     padding: 15px;
@@ -326,7 +404,35 @@ textarea {
     font-size: 14px;
 }
 
-/* Sidebar */
+/* Option d'étirement des images */
+.stretch-option {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+}
+
+.stretch-option label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #495057;
+}
+
+.stretch-option input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+
+/* ============================================================================
+ * SECTION 11 : SIDEBAR ET CARTES
+ * ============================================================================
+ */
+
+/* Style des cartes dans la sidebar */
 .card {
     background-color: white;
     border-radius: 8px;
@@ -356,112 +462,33 @@ textarea {
 }
 
 
-/* Option d'étirement des images */
-.stretch-option {
-    margin-top: 15px;
-    padding-top: 10px;
-    border-top: 1px solid #e9ecef;
-}
+/* ============================================================================
+ * SECTION 12 : LOGO
+ * ============================================================================
+ */
 
-.stretch-option label {
+.logo-container {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #495057;
-}
-
-.stretch-option input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-}
-
-/* Éditeur de texte avec formatage */
-.text-formatting-toolbar {
-    display: flex;
-    gap: 5px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.text-editor {
-    width: 100%;
-    min-height: 150px;
-    padding: 15px;
-    border: 1px solid #ced4da;
-    border-radius: 8px;
-    font-size: 16px;
-    resize: vertical;
-    margin-bottom: 15px;
-    font-family: 'Inter', sans-serif;
-    outline: none;
-    white-space: pre-wrap;
-    line-height: 1.5;
-}
-
-.text-editor:empty::before {
-    content: attr(placeholder);
-    color: #6c757d;
-    pointer-events: none;
-}
-
-.btn-small {
-    padding: 5px 10px;
-    font-size: 14px;
-    font-weight: normal;
-    display: inline-flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
+    padding: 20px 0;
+    width: 100%;
+    background-color: transparent;
 }
 
-.color-picker {
-    width: 30px;
-    height: 30px;
-    padding: 2px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    cursor: pointer;
-    background: none;
-}
-
-.color-picker::-webkit-color-swatch-wrapper {
-    padding: 0;
-}
-
-.color-picker::-webkit-color-swatch {
-    border: none;
-    border-radius: 4px;
-}
-/* Responsive : sidebar en bas sur mobile */
-@media (max-width: 992px) {
-    .main-container {
-        flex-direction: column;
-    }
-
-    .content {
-        width: 100%;
-    }
-
-    .sidebar {
-        width: 100%;
-        order: 1;
-    }
-
-    .button-group {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .btn {
-        width: 100%;
-    }
+.logo {
+    max-width: 96px;  /* Taille augmentée de 20% par rapport à 80px */
+    height: auto;
+    background-color: transparent;
 }
 
 
-/* Styles pour Quill */
+/* ============================================================================
+ * SECTION 13 : ÉDITEUR QUILL
+ * ============================================================================
+ */
+
+/* Conteneur de l'éditeur Quill */
 .quill-editor {
     width: 100%;
     min-height: 150px;
@@ -487,4 +514,73 @@ textarea {
     border-bottom-right-radius: 8px;
     font-size: 16px;
     line-height: 1.5;
+}
+
+
+/* ============================================================================
+ * SECTION 14 : RESPONSIVE DESIGN
+ * ============================================================================
+ * 
+ * Adaptation de la mise en page pour les écrans mobiles
+ */
+
+@media (max-width: 992px) {
+    .main-container {
+        flex-direction: column;
+    }
+
+    .content {
+        width: 100%;
+    }
+
+    .sidebar {
+        width: 100%;
+        order: 1;
+    }
+
+    .button-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+
+/* ============================================================================
+ * SECTION 15 : STYLES DIVERS
+ * ============================================================================
+ */
+
+/* Style pour les boutons petits (si besoin) */
+.btn-small {
+    padding: 5px 10px;
+    font-size: 14px;
+    font-weight: normal;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Sélecteur de couleur */
+.color-picker {
+    width: 30px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+}
+
+.color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px;
 }

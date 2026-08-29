@@ -1,62 +1,100 @@
 /**
- * Convertisseur PDF - Application 100% locale
- * Convertit du texte, des images en PDF et fusionne des PDF
- * sans aucun upload de données vers des serveurs externes.
+ * ============================================================================
+ * CONVERTEUR PDF - Application 100% locale
+ * ============================================================================
+ * 
+ * Description : Application web permettant de convertir du texte et des images
+ *              en PDF, et de fusionner des PDF, sans aucun upload de données.
+ * 
+ * Auteur : Gehan16
+ * Technologie : Vanilla JavaScript, jsPDF, pdf.js, html2canvas, Quill
+ * 
+ * ============================================================================
  */
 
+
 // ============================================================================
-// INITIALISATION
+// SECTION 1 : INITIALISATION DES BIBLIOTHÈQUES
 // ============================================================================
 
-// Initialisation de jsPDF
+/**
+ * Initialisation de jsPDF
+ * @type {Object} - Objet jsPDF pour la génération de PDF
+ */
 const { jsPDF } = window.jspdf;
 
-// Initialisation de pdf.js pour la fusion de PDF
+/**
+ * Initialisation de pdf.js pour la lecture et fusion de PDF
+ * @type {Object} - Bibliothèque pdf.js de Mozilla
+ */
 const pdfjsLib = window['pdfjs-dist/build/pdf'];
+
+/**
+ * Configuration du worker pour pdf.js
+ * Utilise le worker local pour éviter les problèmes CORS
+ */
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/librairies/pdfjs/pdf.worker.min.js';
 
+
 // ============================================================================
-// DONNÉES GLOBALES
+// SECTION 2 : DONNÉES GLOBALES
 // ============================================================================
 
-/** @type {HTMLImageElement[]} */
+/**
+ * Tableau stockant les images sélectionnées pour conversion
+ * @type {HTMLImageElement[]}
+ */
 let imagesData = [];
 
-/** @type {File[]} */
+/**
+ * Tableau stockant les fichiers PDF sélectionnés pour fusion
+ * @type {File[]}
+ */
 let pdfFiles = [];
 
+/**
+ * Instance de l'éditeur Quill
+ * @type {Quill}
+ */
+let quill;
+
+
 // ============================================================================
-// CONSTANTES
+// SECTION 3 : CONSTANTES
 // ============================================================================
 
-/** Dimensions standard A4 en mm */
+/**
+ * Dimensions standard d'une page A4 en millimètres
+ * @constant {number}
+ */
 const A4_WIDTH = 210;
 const A4_HEIGHT = 297;
 
-/** Facteur de conversion DPI vers mm (72 DPI = 25.4 mm par inch) */
-const MM_PER_INCH = 25.4;
-const DPI = 72;
+/**
+ * Facteurs de conversion pour les calculs de dimensions
+ * @constant {number}
+ */
+const MM_PER_INCH = 25.4;  // Millimètres par inch
+const DPI = 72;             // Dots Per Inch standard
+
 
 // ============================================================================
-// ÉLÉMENTS DOM
+// SECTION 4 : ÉLÉMENTS DOM
 // ============================================================================
 
-// Éléments pour le texte
+// --- Éléments pour l'éditeur de texte ---
 const textEditor = document.getElementById('textEditor');
 const textDownloadBtn = document.getElementById('textDownloadBtn');
 const textSettingsBtn = document.getElementById('textSettingsBtn');
 
-// Initialiser Quill
-let quill;
-
-// Éléments pour les images
+// --- Éléments pour les images ---
 const imageDropZone = document.getElementById('image-drop-zone');
 const imageFileInput = document.getElementById('imageFileInput');
 const imageThumbContainer = document.getElementById('image-thumbnail-container');
 const imagesConvertBtn = document.getElementById('imagesConvertBtn');
 const imageSettingsBtn = document.getElementById('imageSettingsBtn');
 
-// Éléments pour les PDF
+// --- Éléments pour les PDF ---
 const pdfDropZone = document.getElementById('pdf-drop-zone');
 const pdfFileInput = document.getElementById('pdfFileInput');
 const pdfFileContainer = document.getElementById('pdf-file-container');
@@ -64,43 +102,59 @@ const mergePdfBtn = document.getElementById('mergePdfBtn');
 const pdfSettingsBtn = document.getElementById('pdfSettingsBtn');
 const pdfErrorMessage = document.getElementById('pdfErrorMessage');
 
-// Éléments pour les marges (texte)
+// --- Éléments pour les marges (Texte) ---
 const textMargins = document.getElementById('textMargins');
 const textMarginTop = document.getElementById('textMarginTop');
 const textMarginBottom = document.getElementById('textMarginBottom');
 const textMarginLeft = document.getElementById('textMarginLeft');
 const textMarginRight = document.getElementById('textMarginRight');
 
-// Éléments pour les marges (images)
+// --- Éléments pour les marges (Images) ---
 const imageMargins = document.getElementById('imageMargins');
 const imageMarginTop = document.getElementById('imageMarginTop');
 const imageMarginBottom = document.getElementById('imageMarginBottom');
 const imageMarginLeft = document.getElementById('imageMarginLeft');
 const imageMarginRight = document.getElementById('imageMarginRight');
 
-// Option pour étirer les images
+// --- Option pour étirer les images ---
 const stretchImagesCheckbox = document.getElementById('stretchImages');
 
-// Éléments pour les marges (PDF)
+// --- Éléments pour les marges (PDF) ---
 const pdfMargins = document.getElementById('pdfMargins');
 const pdfMarginTop = document.getElementById('pdfMarginTop');
 const pdfMarginBottom = document.getElementById('pdfMarginBottom');
 const pdfMarginLeft = document.getElementById('pdfMarginLeft');
 const pdfMarginRight = document.getElementById('pdfMarginRight');
 
+
 // ============================================================================
-// INITIALISATION AU CHARGEMENT DE LA PAGE
+// SECTION 5 : INITIALISATION AU CHARGEMENT DE LA PAGE
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialiser Quill
+    // --- Initialisation de l'éditeur Quill ---
+    initQuillEditor();
+    
+    // --- Configuration des zones de dépôt ---
+    setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
+    setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
+});
+
+/**
+ * Initialise l'éditeur Quill avec les options de formatage
+ */
+function initQuillEditor() {
     quill = new Quill('#textEditor', {
         theme: 'snow',
         modules: {
             toolbar: [
+                // Options de mise en forme de base
                 ['bold', 'italic', 'underline'],
+                // Options d'alignement
                 [{ 'align': [] }],
+                // Options de taille de police
                 [{ 'size': ['small', false, 'large', 'huge'] }],
+                // Options de couleur (Noir, Bleu, Vert, Rouge)
                 [{ 'color': ['#000000', '#0000FF', '#008000', '#FF0000'] }]
             ],
             clipboard: {
@@ -111,21 +165,18 @@ document.addEventListener('DOMContentLoaded', () => {
         placeholder: 'Saisissez votre texte ici...'
     });
     
-    // Mettre à jour l'état du bouton quand le contenu change
+    // Gérer l'état du bouton de téléchargement
     quill.on('text-change', function() {
         textDownloadBtn.disabled = quill.getLength() <= 1; // 1 = juste le saut de ligne
     });
     
-    // Modifier le bouton pour qu'il soit async
+    // Associer le bouton à la fonction de conversion
     textDownloadBtn.onclick = convertTextToPDF;
-    
-    // Configuration des zones de dépôt
-    setupDropZone(imageDropZone, imageFileInput, handleImageFiles);
-    setupDropZone(pdfDropZone, pdfFileInput, handlePDFFiles);
-});
+}
+
 
 // ============================================================================
-// FONCTIONS UTILITAIRES COMMUNES
+// SECTION 6 : FONCTIONS UTILITAIRES COMMUNES
 // ============================================================================
 
 /**
@@ -139,7 +190,7 @@ function preventDefaults(e) {
 
 /**
  * Configure une zone de dépôt pour le drag & drop de fichiers
- * @param {HTMLElement} dropZone - La zone de dépôt
+ * @param {HTMLElement} dropZone - La zone de dépôt DOM
  * @param {HTMLElement} fileInput - L'input file associé
  * @param {Function} handleFilesCallback - Callback pour gérer les fichiers
  */
@@ -164,13 +215,9 @@ function setupDropZone(dropZone, fileInput, handleFilesCallback) {
     fileInput.addEventListener('change', handleFilesCallback);
 }
 
-// ============================================================================
-// FONCTIONS DE TOGGLE POUR LES MARGES
-// ============================================================================
-
 /**
  * Bascule l'affichage des contrôles de marges
- * @param {HTMLElement} marginsElement - L'élément contenant les contrôles de marges
+ * @param {HTMLElement} marginsElement - L'élément contenant les contrôles
  * @param {HTMLElement} buttonElement - Le bouton à mettre à jour
  * @param {string} defaultText - Texte du bouton en mode paramètres
  * @param {string} validationText - Texte du bouton en mode validation
@@ -185,7 +232,7 @@ function toggleMargins(marginsElement, buttonElement, defaultText, validationTex
     }
 }
 
-// Handlers spécifiques pour chaque type de conversion
+// --- Handlers spécifiques pour chaque type de conversion ---
 function toggleTextMargins() {
     toggleMargins(textMargins, textSettingsBtn, '🛠️ Paramètres', '✅ Valider');
 }
@@ -198,8 +245,9 @@ function togglePdfMargins() {
     toggleMargins(pdfMargins, pdfSettingsBtn, '🛠️ Paramètres', '✅ Valider');
 }
 
+
 // ============================================================================
-// GESTION DES IMAGES
+// SECTION 7 : GESTION DES IMAGES
 // ============================================================================
 
 /**
@@ -277,8 +325,9 @@ function updateImagesButtonState() {
     imagesConvertBtn.disabled = imagesData.length === 0;
 }
 
+
 // ============================================================================
-// CONVERSION IMAGES → PDF
+// SECTION 8 : CONVERSION IMAGES → PDF
 // ============================================================================
 
 /**
@@ -329,7 +378,8 @@ function convertImagesToPDF() {
     const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: 'a4',
+        compress: true
     });
 
     // Vérifier si l'utilisateur veut étirer les images
@@ -369,8 +419,9 @@ function convertImagesToPDF() {
 // Attacher l'événement au bouton
 imagesConvertBtn.addEventListener('click', convertImagesToPDF);
 
+
 // ============================================================================
-// GESTION DES PDF
+// SECTION 9 : GESTION DES PDF (FUSION)
 // ============================================================================
 
 /**
@@ -445,12 +496,14 @@ function updateMergePdfButtonState() {
     mergePdfBtn.disabled = pdfFiles.length < 2;
 }
 
+
 // ============================================================================
-// FUSION DE PDF
+// SECTION 10 : FUSION DE PDF
 // ============================================================================
 
 /**
  * Fusionne les PDF sélectionnés en un seul fichier
+ * Utilise pdf.js pour lire les PDF et jsPDF pour les recréer
  */
 async function mergePDFs() {
     if (pdfFiles.length < 2) return;
@@ -467,12 +520,12 @@ async function mergePDFs() {
         const marginLeft = parseFloat(pdfMarginLeft.value);
         const marginRight = parseFloat(pdfMarginRight.value);
 
-        // Créer un nouveau PDF avec jsPDF avec compression (première page A4 portrait par défaut)
+        // Créer un nouveau PDF avec jsPDF (première page A4 portrait par défaut)
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
             format: 'a4',
-            compress: true
+            compress: true  // Activation de la compression pour réduire la taille
         });
 
         // Traiter chaque PDF
@@ -508,7 +561,8 @@ async function mergePDFs() {
                     ], orientation);
                 }
 
-                // Rendre la page sur un canvas avec un scale réduit pour réduire la taille du fichier
+                // Rendre la page sur un canvas avec un scale réduit pour optimiser la taille
+                // scale: 1.9 offre un bon compromis entre qualité et taille de fichier
                 const scale = 1.9;
                 const viewport = page.getViewport({ scale: scale });
 
@@ -522,13 +576,13 @@ async function mergePDFs() {
                     viewport: viewport
                 }).promise;
 
-                // Ajouter l'image au PDF avec les marges et compression JPEG pour réduire la taille
+                // Ajouter l'image au PDF avec les marges
                 const currentPageWidth = doc.internal.pageSize.getWidth();
                 const currentPageHeight = doc.internal.pageSize.getHeight();
                 const usableWidth = currentPageWidth - marginLeft - marginRight;
                 const usableHeight = currentPageHeight - marginTop - marginBottom;
                 
-                // Utiliser JPEG avec qualité 0.92 au lieu de PNG pour réduire la taille
+                // Utiliser JPEG avec compression pour réduire la taille du fichier
                 doc.addImage(canvas, 'JPEG', marginLeft, marginTop, usableWidth, usableHeight, undefined, 'FAST');
             }
             
@@ -550,21 +604,28 @@ async function mergePDFs() {
     }
 }
 
+
 // ============================================================================
-// CONVERSION TEXTE → PDF
+// SECTION 11 : CONVERSION TEXTE → PDF
 // ============================================================================
 
 /**
  * Convertit le texte en PDF en passant par une image pour préserver la mise en forme
  * Utilise html2canvas pour capturer le contenu de Quill en image haute résolution
+ * 
+ * @async
+ * @function convertTextToPDF
+ * @returns {Promise<void>}
  */
 async function convertTextToPDF() {
     const htmlContent = quill.root.innerHTML;
+    
+    // Vérifier qu'il y a du contenu
     if (!htmlContent || htmlContent === '<p><br></p>') {
         return;
     }
 
-    // Sauvegarder le texte original du bouton et le désactiver
+    // Sauvegarder l'état original du bouton et le désactiver
     const originalBtnText = textDownloadBtn.textContent;
     const originalBtnDisabled = textDownloadBtn.disabled;
     textDownloadBtn.disabled = true;
@@ -577,7 +638,7 @@ async function convertTextToPDF() {
         const marginLeft = parseFloat(textMarginLeft.value);
         const marginRight = parseFloat(textMarginRight.value);
 
-        // Créer le document PDF avec compression d'images
+        // Créer le document PDF avec compression
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
@@ -613,10 +674,10 @@ async function convertTextToPDF() {
         const quillEditor = document.querySelector('#textEditor .ql-editor');
         const editorStyle = window.getComputedStyle(quillEditor);
         tempContainer.style.fontFamily = editorStyle.fontFamily || 'Inter, sans-serif';
-        // Agrandir le texte de 144% (1.2 * 1.2)
+        
+        // Agrandir le texte de 144% (1.2 * 1.2) et augmenter l'interligne
         const originalFontSize = parseFloat(editorStyle.fontSize || '16px');
         tempContainer.style.fontSize = `${originalFontSize * 1.44}px`;
-        // Augmenter légèrement l'interligne (1.5 → 1.7)
         tempContainer.style.lineHeight = '1.7';
         tempContainer.style.color = editorStyle.color || '#333';
         tempContainer.style.whiteSpace = 'pre-wrap';
@@ -665,212 +726,112 @@ async function convertTextToPDF() {
         
         document.body.appendChild(tempContainer);
 
-        // Utiliser html2canvas avec une résolution réduite pour réduire la taille du PDF
-        // scale: 1.5 au lieu de 2 pour réduire la taille sans trop perdre en qualité
-        const canvas = await html2canvas(tempContainer, {
-            scale: 1.5,
-            backgroundColor: 'white',
-            logging: false,
-            useCORS: true,
-            allowTaint: true,
-            scrollX: 0,
-            scrollY: 0,
-            x: 0,
-            y: 0
-        });
+        try {
+            // Utiliser html2canvas avec une résolution réduite pour réduire la taille du PDF
+            // scale: 1.5 au lieu de 2 pour réduire la taille sans trop perdre en qualité
+            const canvas = await html2canvas(tempContainer, {
+                scale: 1.5,
+                backgroundColor: 'white',
+                logging: false,
+                useCORS: true,
+                allowTaint: true,
+                scrollX: 0,
+                scrollY: 0,
+                x: 0,
+                y: 0
+            });
 
-        // Calculer les dimensions de l'image en mm
-        // Convertir les pixels en mm (divisé par 1.5, le nouveau scale)
-        const imageWidthMm = (canvas.width / dpi) * mmPerInch / 1.5;
-        const imageHeightMm = (canvas.height / dpi) * mmPerInch / 1.5;
-        
-        // Ajouter l'image au PDF
-        // Toujours aligner en haut à gauche de la zone de contenu (respect des marges)
-        const x = marginLeft;
-        const y = marginTop;
-        
-        // Vérifier si l'image est plus large que la zone de contenu
-        // Si oui, la redimensionner proportionnellement
-        let finalWidth = imageWidthMm;
-        let finalHeight = imageHeightMm;
-        
-        if (imageWidthMm > contentWidth) {
-            // Redimensionner proportionnellement pour respecter la largeur
-            const scaleFactor = contentWidth / imageWidthMm;
-            finalWidth = contentWidth;
-            finalHeight = imageHeightMm * scaleFactor;
-        }
-        
-        // Si l'image est plus haute que la page disponible, la découper en plusieurs pages
-        if (finalHeight > contentHeight) {
-            // Calculer combien de pages sont nécessaires
-            const totalPages = Math.ceil(finalHeight / contentHeight);
+            // Calculer les dimensions de l'image en mm
+            // Convertir les pixels en mm (divisé par 1.5, le scale utilisé)
+            const imageWidthMm = (canvas.width / dpi) * mmPerInch / 1.5;
+            const imageHeightMm = (canvas.height / dpi) * mmPerInch / 1.5;
             
-            for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-                if (pageIndex > 0) {
-                    doc.addPage();
-                }
-                
-                // Calculer la partie à découper
-                const startY = pageIndex * contentHeight;
-                const clipHeight = Math.min(contentHeight, finalHeight - startY);
-                
-                // Calculer les coordonnées en pixels pour le découpage
-                const startYPx = Math.round((startY / finalHeight) * canvas.height);
-                const clipHeightPx = Math.round((clipHeight / finalHeight) * canvas.height);
-                
-                // Créer un canvas temporaire pour la partie à découper
-                const partCanvas = document.createElement('canvas');
-                partCanvas.width = canvas.width;
-                partCanvas.height = clipHeightPx;
-                const partCtx = partCanvas.getContext('2d');
-                
-                // Dessiner la partie correspondante
-                partCtx.drawImage(
-                    canvas,
-                    0, startYPx, canvas.width, clipHeightPx,
-                    0, 0, canvas.width, clipHeightPx
-                );
-                
-                // Convertir en mm
-                const partHeightMm = clipHeight; // Déjà en mm
-                
-                // Ajouter au PDF - toujours en haut de la page
-                doc.addImage(partCanvas, 'PNG', x, marginTop, finalWidth, partHeightMm);
+            // Ajouter l'image au PDF
+            // Toujours aligner en haut à gauche de la zone de contenu (respect des marges)
+            const x = marginLeft;
+            const y = marginTop;
+            
+            // Vérifier si l'image est plus large que la zone de contenu
+            // Si oui, la redimensionner proportionnellement
+            let finalWidth = imageWidthMm;
+            let finalHeight = imageHeightMm;
+            
+            if (imageWidthMm > contentWidth) {
+                // Redimensionner proportionnellement pour respecter la largeur
+                const scaleFactor = contentWidth / imageWidthMm;
+                finalWidth = contentWidth;
+                finalHeight = imageHeightMm * scaleFactor;
             }
-        } else {
-            // L'image tient sur une seule page
-            doc.addImage(canvas, 'PNG', x, y, finalWidth, finalHeight);
-        }
+            
+            // Si l'image est plus haute que la page disponible, la découper en plusieurs pages
+            if (finalHeight > contentHeight) {
+                // Calculer combien de pages sont nécessaires
+                const totalPages = Math.ceil(finalHeight / contentHeight);
+                
+                for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+                    if (pageIndex > 0) {
+                        doc.addPage();
+                    }
+                    
+                    // Calculer la partie à découper
+                    const startY = pageIndex * contentHeight;
+                    const clipHeight = Math.min(contentHeight, finalHeight - startY);
+                    
+                    // Calculer les coordonnées en pixels pour le découpage
+                    const startYPx = Math.round((startY / finalHeight) * canvas.height);
+                    const clipHeightPx = Math.round((clipHeight / finalHeight) * canvas.height);
+                    
+                    // Créer un canvas temporaire pour la partie à découper
+                    const partCanvas = document.createElement('canvas');
+                    partCanvas.width = canvas.width;
+                    partCanvas.height = clipHeightPx;
+                    const partCtx = partCanvas.getContext('2d');
+                    
+                    // Dessiner la partie correspondante
+                    partCtx.drawImage(
+                        canvas,
+                        0, startYPx, canvas.width, clipHeightPx,
+                        0, 0, canvas.width, clipHeightPx
+                    );
+                    
+                    // Convertir en mm
+                    const partHeightMm = clipHeight; // Déjà en mm
+                    
+                    // Ajouter au PDF - toujours en haut de la page
+                    doc.addImage(partCanvas, 'PNG', x, marginTop, finalWidth, partHeightMm);
+                }
+            } else {
+                // L'image tient sur une seule page
+                doc.addImage(canvas, 'PNG', x, y, finalWidth, finalHeight);
+            }
 
-        // Réactiver le bouton AVANT doc.save() car doc.save() est bloquant
-        textDownloadBtn.disabled = originalBtnDisabled;
-        textDownloadBtn.textContent = originalBtnText;
-        
-        // Nettoyer
-        if (tempContainer && tempContainer.parentNode) {
-            document.body.removeChild(tempContainer);
+            // Réactiver le bouton AVANT doc.save() car doc.save() est bloquant
+            textDownloadBtn.disabled = originalBtnDisabled;
+            textDownloadBtn.textContent = originalBtnText;
+            
+            // Nettoyer
+            if (tempContainer && tempContainer.parentNode) {
+                document.body.removeChild(tempContainer);
+            }
+            
+            // Lancer le téléchargement
+            doc.save('texte-converti.pdf');
+        } catch (error) {
+            console.error('Erreur lors de la conversion texte en PDF:', error);
+            alert('Une erreur est survenue lors de la conversion. Veuillez réessayer.');
+            // Réactiver le bouton en cas d'erreur
+            textDownloadBtn.disabled = originalBtnDisabled;
+            textDownloadBtn.textContent = originalBtnText;
+            // Nettoyer
+            if (tempContainer && tempContainer.parentNode) {
+                document.body.removeChild(tempContainer);
+            }
         }
-        
-        // Lancer le téléchargement
-        doc.save('texte-converti.pdf');
     } catch (error) {
         console.error('Erreur lors de la conversion texte en PDF:', error);
         alert('Une erreur est survenue lors de la conversion. Veuillez réessayer.');
-        // Réactiver le bouton en cas d'erreur
+        // Réactiver le bouton
         textDownloadBtn.disabled = originalBtnDisabled;
         textDownloadBtn.textContent = originalBtnText;
-        // Nettoyer
-        if (tempContainer && tempContainer.parentNode) {
-            document.body.removeChild(tempContainer);
-        }
     }
-}
-
-/**
- * Rend une ligne de segments de texte avec le bon alignement
- * @param {jsPDF} doc - Le document PDF
- * @param {Array} segments - Les segments à rendre
- * @param {number} startX - Position X de départ
- * @param {number} y - Position Y
- * @param {string} align - Alignement (left, center, right)
- * @param {number} maxWidth - Largeur maximale
- * @param {number} marginLeft - Marge gauche
- * @param {number} marginRight - Marge droite
- * @param {number} pageWidth - Largeur de la page
- */
-function renderLine(doc, segments, startX, y, align, maxWidth, marginLeft, marginRight, pageWidth) {
-    // Calculer la largeur totale de la ligne
-    let totalLineWidth = 0;
-    segments.forEach(seg => {
-        totalLineWidth += doc.getTextWidth(seg.text);
-    });
-    
-    // Calculer la position X de départ en fonction de l'alignement
-    let currentX = startX;
-    if (align === 'center') {
-        currentX = pageWidth / 2 - totalLineWidth / 2;
-    } else if (align === 'right') {
-        currentX = pageWidth - marginRight - totalLineWidth;
-    }
-    
-    // Rendre chaque segment
-    segments.forEach(segment => {
-        // Appliquer le style
-        let fontStyle = 'normal';
-        if (segment.isBold && segment.isItalic) {
-            fontStyle = 'bolditalic';
-        } else if (segment.isBold) {
-            fontStyle = 'bold';
-        } else if (segment.isItalic) {
-            fontStyle = 'italic';
-        }
-        
-        doc.setFont('helvetica', fontStyle);
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        
-        // Appliquer le soulignement si nécessaire
-        if (segment.isUnderline) {
-            const lineY = y + 1;
-            const textWidth = doc.getTextWidth(segment.text);
-            doc.line(currentX, lineY, currentX + textWidth, lineY);
-        }
-        
-        // Ajouter le texte
-        doc.text(segment.text, currentX, y, { align: 'left' });
-        
-        // Mettre à jour currentX
-        currentX += doc.getTextWidth(segment.text);
-    });
-}
-
-/**
- * Extrait les segments de texte avec leur formatage depuis un élément Quill
- * @param {HTMLElement} element - L'élément à analyser
- * @returns {Array} Tableau d'objets {text, isBold, isItalic, isUnderline}
- */
-function extractQuillSegments(element) {
-    const segments = [];
-    
-    // Fonction récursive pour parcourir les nœuds
-    function processNode(node, currentFormatting) {
-        if (node.nodeType === Node.TEXT_NODE) {
-            const text = node.textContent;
-            if (text.trim()) {
-                segments.push({
-                    text: text,
-                    isBold: currentFormatting.isBold,
-                    isItalic: currentFormatting.isItalic,
-                    isUnderline: currentFormatting.isUnderline
-                });
-            }
-            return;
-        }
-        
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            // Mettre à jour le formatage en fonction de la balise
-            const newFormatting = {
-                isBold: currentFormatting.isBold || node.tagName === 'STRONG' || node.tagName === 'B',
-                isItalic: currentFormatting.isItalic || node.tagName === 'EM' || node.tagName === 'I',
-                isUnderline: currentFormatting.isUnderline || node.tagName === 'U'
-            };
-            
-            // Traiter les enfants avec le nouveau formatage
-            for (let i = 0; i < node.childNodes.length; i++) {
-                processNode(node.childNodes[i], newFormatting);
-            }
-        }
-    }
-    
-    // Démarrer le traitement avec un formatage vide
-    for (let i = 0; i < element.childNodes.length; i++) {
-        processNode(element.childNodes[i], {
-            isBold: false,
-            isItalic: false,
-            isUnderline: false
-        });
-    }
-    
-    return segments;
 }

@@ -4,41 +4,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Convertisseur PDF sécurisé</title>
-    <!-- Favicon -->
+    
+    <!-- ======================================================================== -->
+    <!-- FAVICON -->
+    <!-- ======================================================================== -->
     <link rel="icon" type="image/png" href="assets/images/logo.png">
-    <!-- Polices Google (référencées localement mais chargées depuis Google) -->
+    
+    <!-- ======================================================================== -->
+    <!-- POLICES -->
+    <!-- ======================================================================== -->
+    <!-- Préconnexion pour optimiser le chargement des polices Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Police Inter (chargée depuis Google CDN, référencée localement) -->
     <link href="assets/librairies/fonts/inter/inter.css" rel="stylesheet">
-    <!-- jsPDF (local) -->
-    <script src="assets/librairies/jspdf/jspdf.umd.min.js"></script>
-    <!-- pdf.js pour la fusion (local) -->
-    <script src="assets/librairies/pdfjs/pdf.min.js"></script>
-    <!-- html2canvas pour la conversion texte en image (local) -->
-    <script src="assets/librairies/html2canvas/html2canvas.min.js"></script>
-    <!-- Quill (local) -->
+    
+    <!-- ======================================================================== -->
+    <!-- BIBLIOTHÈQUES CSS -->
+    <!-- ======================================================================== -->
+    <!-- Quill - Éditeur de texte riche (thème Snow) -->
     <link href="assets/librairies/quill/quill.snow.css" rel="stylesheet">
-    <!-- CSS local -->
+    <!-- Styles personnalisés du site -->
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
+
 <body>
+    <!-- ======================================================================== -->
+    <!-- CONTAINER PRINCIPAL -->
+    <!-- ======================================================================== -->
     <div class="main-container">
-        <!-- Contenu principal -->
+        
+        <!-- ==================================================================== -->
+        <!-- CONTENU PRINCIPAL -->
+        <!-- ==================================================================== -->
         <main class="content">
+            
+            <!-- ================================================================ -->
+            <!-- HEADER -->
+            <!-- ================================================================ -->
             <div class="header">
                 <h1>Convertisseur PDF sécurisé</h1>
                 <p>Convertissez du texte, des images et fusionnez des PDF en local, sans aucun upload de donnée.</p>
                 <p>Texte des PDF générés protégé contre l'indexation et la copie.</p>
             </div>
 
-            <!-- Texte → PDF -->
+            <!-- ================================================================ -->
+            <!-- SECTION : CONVERSION TEXTE → PDF -->
+            <!-- ================================================================ -->
             <div class="section">
                 <div style="margin-top: 50px;"></div>
                 <h2 class="section-title">Convertir du Texte en PDF</h2>
-                <!-- Éditeur Quill -->
+                
+                <!-- Éditeur Quill pour la saisie du texte -->
                 <div id="textEditor" class="quill-editor"></div>
 
-                <!-- Contrôles de marges pour le texte (masqués par défaut) -->
+                <!-- ==================================================---- -->
+                <!-- CONTRÔLES DE MARGES (masqués par défaut) -->
+                <!-- ====================================================== -->
                 <div class="margin-controls" id="textMargins" style="display: none;">
                     <h3>Marges (mm)</h3>
                     <div class="margin-inputs">
@@ -60,22 +82,32 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Boutons d'action pour la conversion texte -->
                 <div class="button-group">
-                    <button id="textSettingsBtn" class="btn btn-secondary" onclick="toggleTextMargins()">⚙️ Paramètres</button>
-                    <button id="textDownloadBtn" class="btn btn-primary" disabled >Télécharger le PDF</button>
+                    <button id="textSettingsBtn" class="btn btn-secondary" onclick="toggleTextMargins()">
+                        <span class="btn-icon">🛠️</span> Paramètres
+                    </button>
+                    <button id="textDownloadBtn" class="btn btn-primary" disabled>Télécharger le PDF</button>
                 </div>
             </div>
 
-            <!-- Images → PDF -->
+            <!-- ================================================================ -->
+            <!-- SECTION : CONVERSION IMAGES → PDF -->
+            <!-- ================================================================ -->
             <div class="section">
                 <h2 class="section-title">Convertir des Images en PDF</h2>
+                
+                <!-- Zone de dépôt pour les images -->
                 <div id="image-drop-zone" class="drop-zone">
                     <i>📷</i>
                     <p>Glissez vos images ici ou cliquez pour sélectionner</p>
                     <input type="file" id="imageFileInput" accept="image/*" multiple style="display: none;">
                 </div>
 
-                <!-- Contrôles de marges pour les images (masqués par défaut) -->
+                <!-- ==================================================---- -->
+                <!-- CONTRÔLES DE MARGES POUR LES IMAGES -->
+                <!-- ====================================================== -->
                 <div class="margin-controls" id="imageMargins" style="display: none;">
                     <h3>Marges (mm)</h3>
                     <div class="margin-inputs">
@@ -96,6 +128,8 @@
                             <input type="number" id="imageMarginRight" value="0" min="0">
                         </div>
                     </div>
+                    
+                    <!-- Option pour étirer les images -->
                     <div class="stretch-option">
                         <label for="stretchImages">
                             <input type="checkbox" id="stretchImages">
@@ -103,23 +137,35 @@
                         </label>
                     </div>
                 </div>
+                
+                <!-- Conteneur pour les miniatures des images -->
                 <div id="image-thumbnail-container" class="file-container"></div>
+                
+                <!-- Boutons d'action pour la conversion images -->
                 <div class="button-group">
-                    <button id="imageSettingsBtn" class="btn btn-secondary" onclick="toggleImageMargins()">⚙️ Paramètres</button>
+                    <button id="imageSettingsBtn" class="btn btn-secondary" onclick="toggleImageMargins()">
+                        <span class="btn-icon">🛠️</span> Paramètres
+                    </button>
                     <button id="imagesConvertBtn" class="btn btn-success" disabled>Télécharger le PDF</button>
                 </div>
             </div>
 
-            <!-- Fusion de PDF -->
+            <!-- ================================================================ -->
+            <!-- SECTION : FUSION DE PDF -->
+            <!-- ================================================================ -->
             <div class="section">
                 <h2 class="section-title">Fusionner des PDF</h2>
+                
+                <!-- Zone de dépôt pour les PDF -->
                 <div id="pdf-drop-zone" class="drop-zone">
                     <i>📄</i>
                     <p>Glissez vos PDF ici ou cliquez pour sélectionner</p>
                     <input type="file" id="pdfFileInput" accept=".pdf" multiple style="display: none;">
                 </div>
 
-                <!-- Contrôles de marges pour la fusion (masqués par défaut) -->
+                <!-- ==================================================---- -->
+                <!-- CONTRÔLES DE MARGES POUR LA FUSION -->
+                <!-- ====================================================== -->
                 <div class="margin-controls" id="pdfMargins" style="display: none;">
                     <h3>Marges (mm)</h3>
                     <p class="margin-note">Les marges seront appliquées à chaque page du PDF fusionné.</p>
@@ -142,38 +188,75 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Conteneur pour les fichiers PDF sélectionnés -->
                 <div id="pdf-file-container" class="file-container"></div>
+                
+                <!-- Message d'erreur pour la fusion de PDF -->
                 <div id="pdfErrorMessage" class="error-message"></div>
+                
+                <!-- Boutons d'action pour la fusion -->
                 <div class="button-group">
-                    <button id="pdfSettingsBtn" class="btn btn-secondary" onclick="togglePdfMargins()">⚙️ Paramètres</button>
+                    <button id="pdfSettingsBtn" class="btn btn-secondary" onclick="togglePdfMargins()">
+                        <span class="btn-icon">🛠️</span> Paramètres
+                    </button>
                     <button id="mergePdfBtn" class="btn btn-warning" disabled onclick="mergePDFs()">Fusionner les PDF</button>
                 </div>
             </div>
         </main>
 
-        <!-- Sidebar à droite -->
+        <!-- ==================================================================== -->
+        <!-- SIDEBAR (colonne de droite) -->
+        <!-- ==================================================================== -->
         <aside class="sidebar">
+            <!-- Logo -->
             <div class="logo-container">
                 <img src="assets/images/logo.png" alt="Logo Convertisseur PDF" class="logo">
             </div>
+            
+            <!-- Carte : Pourquoi ce convertisseur est différent -->
             <div class="card why-different-card">
                 <h3>Pourquoi ce convertisseur est différent</h3>
-                <p>Contrairement aux autres convertisseurs trouvables sur internet, ce convertisseur garantit la confidentialité de vos données. En effet, vos données et vos documents restent sur votre navigateur et tout le traitement est réalisé en local. Aucune donnée ne part vers l'extérieur.</p>
+                <p>
+                    Contrairement aux autres convertisseurs trouvables sur internet, 
+                    ce convertisseur garantit la confidentialité de vos données. 
+                    En effet, vos données et vos documents restent sur votre navigateur 
+                    et tout le traitement est réalisé en local. 
+                    Aucune donnée ne part vers l'extérieur.
+                </p>
             </div>
 
-<div class="card support-card">
-    <h3>Soutenir cet outil</h3>
-    <p>Si cet outil vous est utile, vous pouvez me soutenir via Ko-fi pour m'aider à continuer à développer des projets gratuits et open source.</p>
-    <div class="ko-fi-container">
-        <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
-        <script type='text/javascript'>kofiwidget2.init('Soutenir sur Ko-fi', '#72a4f2', 'P7D025DUH0');kofiwidget2.draw();</script>
+            <!-- Carte : Soutenir cet outil -->
+            <div class="card support-card">
+                <h3>Soutenir cet outil</h3>
+                <p>
+                    Si cet outil vous est utile, vous pouvez me soutenir via Ko-fi 
+                    pour m'aider à continuer à développer des projets gratuits et open source.
+                </p>
+                <div class="ko-fi-container">
+                    <!-- Widget Ko-fi (chargé depuis CDN externe) -->
+                    <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
+                    <script type='text/javascript'>
+                        kofiwidget2.init('Soutenir sur Ko-fi', '#72a4f2', 'P7D025DUH0');
+                        kofiwidget2.draw();
+                    </script>
+                </div>
+            </div>
+        </aside>
     </div>
-</div>
 
-    <!-- Quill JS (local) -->
+    <!-- ======================================================================== -->
+    <!-- BIBLIOTHÈQUES JAVASCRIPT (chargées en local) -->
+    <!-- ======================================================================== -->
+    <!-- Quill - Éditeur de texte riche -->
     <script src="assets/librairies/quill/quill.min.js"></script>
-    <!-- Scripts -->
+    
+    <!-- Script principal de l'application -->
     <script src="assets/js/script.js"></script>
+    
+    <!-- ======================================================================== -->
+    <!-- STYLES SUPPLÉMENTAIRES (pour l'impression) -->
+    <!-- ======================================================================== -->
     <style>
         /* Style pour l'éditeur Quill en mode impression */
         @media print {
