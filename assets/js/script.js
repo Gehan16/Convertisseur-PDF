@@ -712,18 +712,27 @@ async function convertTextToPDF() {
             doc.addImage(canvas, 'PNG', x, y, finalWidth, finalHeight);
         }
 
-        doc.save('texte-converti.pdf');
-    } catch (error) {
-        console.error('Erreur lors de la conversion texte en PDF:', error);
-        alert('Une erreur est survenue lors de la conversion. Veuillez réessayer.');
-    } finally {
+        // Réactiver le bouton AVANT doc.save() car doc.save() est bloquant
+        textDownloadBtn.disabled = originalBtnDisabled;
+        textDownloadBtn.textContent = originalBtnText;
+        
         // Nettoyer
         if (tempContainer && tempContainer.parentNode) {
             document.body.removeChild(tempContainer);
         }
-        // Réactiver le bouton dans tous les cas
+        
+        // Lancer le téléchargement
+        doc.save('texte-converti.pdf');
+    } catch (error) {
+        console.error('Erreur lors de la conversion texte en PDF:', error);
+        alert('Une erreur est survenue lors de la conversion. Veuillez réessayer.');
+        // Réactiver le bouton en cas d'erreur
         textDownloadBtn.disabled = originalBtnDisabled;
         textDownloadBtn.textContent = originalBtnText;
+        // Nettoyer
+        if (tempContainer && tempContainer.parentNode) {
+            document.body.removeChild(tempContainer);
+        }
     }
 }
 
